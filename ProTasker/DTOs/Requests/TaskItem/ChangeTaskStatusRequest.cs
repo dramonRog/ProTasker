@@ -1,4 +1,4 @@
 ﻿namespace ProTasker.DTOs.Requests.TaskItem
 {
-    public record ChangeTaskStatusRequest(TaskStatus Status);
+    public record ChangeTaskStatusRequest(ProTasker.Models.TaskStatus Status);
 }
