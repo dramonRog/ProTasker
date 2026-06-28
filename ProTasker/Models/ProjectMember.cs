@@ -4,7 +4,7 @@ namespace ProTasker.Models
     {
         public Guid ProjectId { get; set; }
         public Guid UserId { get; set; }
-        public DateTime AddedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
         public required Project Project { get; set; }
         public required User User { get; set; }

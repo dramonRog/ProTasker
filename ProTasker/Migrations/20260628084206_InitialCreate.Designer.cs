@@ -12,7 +12,7 @@ using ProTasker.Data;
 namespace ProTasker.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260625093801_InitialCreate")]
+    [Migration("20260628084206_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -54,7 +54,7 @@ namespace ProTasker.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("AddedAtUtc")
+                    b.Property<DateTime>("AddedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("ProjectId", "UserId");

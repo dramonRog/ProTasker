@@ -51,7 +51,7 @@ namespace ProTasker.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("AddedAtUtc")
+                    b.Property<DateTime>("AddedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("ProjectId", "UserId");
