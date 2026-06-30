@@ -37,7 +37,8 @@ namespace ProTasker.Data
 
                 entity.HasOne(ti => ti.User)
                     .WithMany(u => u.AssignedTasks)
-                    .HasForeignKey(ti => ti.UserId);
+                    .HasForeignKey(ti => ti.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.Property(ti => ti.Status)
                     .HasConversion<string>();
