@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ProTasker.Common;
 using ProTasker.DTOs.Requests.Project;
 using ProTasker.DTOs.Responses.Project;
 using ProTasker.Services;
@@ -17,9 +18,10 @@ namespace ProTasker.Controllers
         }
 
         [HttpGet]
-        public async Task<List<ProjectListItemResponse>> GetAllProjects(CancellationToken cancellationToken)
+        public async Task<ActionResult<List<ProjectListItemResponse>>> GetAllProjects(CancellationToken cancellationToken)
         {
-            return await _projectService.GetAllAsync(cancellationToken);
+            var projectItems = await _projectService.GetAllAsync(cancellationToken);
+            return projectItems.CastToResultCode();
         }
 
         [HttpGet("{id:guid}")]
@@ -29,32 +31,30 @@ namespace ProTasker.Controllers
         {
             var project = await _projectService.GetByIdAsync(id, cancellationToken);
 
-            if (project == null)
-                return NotFound("The project does not exist.");
-
-            return Ok(project);
+            return project.CastToResultCode();
         }
 
         [HttpPost]
         [ProducesResponseType(typeof(ProjectDetailsResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ProjectDetailsResponse>> CreateProject(CreateProjectRequest request, CancellationToken cancellationToken)
         {
-            var project = await _projectService.CreateAsync(request, cancellationToken);
+            var projectResult = await _projectService.CreateAsync(request, cancellationToken);
 
-            return CreatedAtAction(nameof(GetProjectById), new { id = project.Id }, project);
+            if (!projectResult.IsSuccess)
+                return projectResult.CastToResultCode();
+
+            return CreatedAtAction(nameof(GetProjectById), new { id = projectResult.Value!.Id }, projectResult.Value);
         }
 
         [HttpPut("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProjectDetailsResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<ProjectDetailsResponse>> UpdateProject(Guid id, UpdateProjectRequest request, CancellationToken cancellationToken)
         {
-            var project = await _projectService.UpdateAsync(id, request, cancellationToken);
-
-            if (project == null)
-                return NotFound();
-
-            return Ok(project);
+            var projectResult = await _projectService.UpdateAsync(id, request, cancellationToken);
+            return projectResult.CastToResultCode();
         }
 
         [HttpDelete("{id:guid}")]
@@ -62,9 +62,8 @@ namespace ProTasker.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> DeleteProject(Guid id, CancellationToken cancellationToken)
         {
-            bool result = await _projectService.DeleteAsync(id, cancellationToken);
-
-            return result ? NoContent() : NotFound();
+            var projectResult = await _projectService.DeleteAsync(id, cancellationToken);
+            return projectResult.CastToResultCode();
         }
     }
 }
