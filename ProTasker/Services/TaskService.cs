@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
+using ProTasker.Common;
 using ProTasker.Data;
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
@@ -19,41 +20,44 @@ namespace ProTasker.Services
             _mapper = mapper;
         }
 
-        public async Task<List<TaskResponse>> GetAllAsync(CancellationToken cancellationToken)
+        public async Task<Result<List<TaskResponse>>> GetAllAsync(CancellationToken cancellationToken)
         {
-            return await _context.TaskItems
+            var taskResult = await _context.TaskItems
                 .AsNoTracking()
                 .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
+
+            return Result<List<TaskResponse>>.Success(taskResult);
         }
 
-        public async Task<TaskResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             TaskResponse? result = await _context.TaskItems
                 .AsNoTracking()
                 .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-            return result;
+            return result == null ? Result<TaskResponse>.NotFound("Task was not found.") : Result<TaskResponse>.Success(result);
         }
 
-        public async Task<TaskResponse> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken)
         {
             TaskItem task = _mapper.Map<TaskItem>(request);
 
             _context.TaskItems.Add(task);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return _mapper.Map<TaskResponse>(task);
+            TaskResponse response = _mapper.Map<TaskResponse>(task);
+            return Result<TaskResponse>.Success(response);
         }
 
-        public async Task<TaskResponse?> UpdateAsync(Guid Id, UpdateTaskItemRequest request, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> UpdateAsync(Guid id, UpdateTaskItemRequest request, CancellationToken cancellationToken)
         {
             TaskItem? task = await _context.TaskItems
-                .FirstOrDefaultAsync(t => t.Id == Id, cancellationToken);
+                .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
             if (task == null)
-                return null;
+                return Result<TaskResponse>.NotFound("Task was not found.");
 
             if (request.Title is not null)
                 task.Title = request.Title;
@@ -66,38 +70,42 @@ namespace ProTasker.Services
 
             await _context.SaveChangesAsync(cancellationToken);
             
-            return _mapper.Map<TaskResponse>(task);
+            TaskResponse response = _mapper.Map<TaskResponse>(task);
+            return Result<TaskResponse>.Success(response);
         }
 
-        public async Task<TaskResponse?> AssignTaskAsync(Guid id, AssignTaskRequest request, CancellationToken cancellationToken)
-        {
-            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-
-            if (task != null && await _context.Users.AnyAsync(u => u.Id == request.UserId, cancellationToken))
-            {
-                task.UserId = request.UserId;
-                await _context.SaveChangesAsync(cancellationToken);
-                
-                return _mapper.Map<TaskResponse>(task);
-            }
-
-            return null;
-        }
-
-        public async Task<TaskResponse?> ChangeTaskStatusAsync(Guid id, ChangeTaskStatusRequest request, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> AssignTaskAsync(Guid id, AssignTaskRequest request, CancellationToken cancellationToken)
         {
             TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
             if (task == null)
-                return null;
+                return Result<TaskResponse>.NotFound("Task was not found.");
+
+            if (!await _context.Users.AnyAsync(u => u.Id == request.UserId, cancellationToken))
+                return Result<TaskResponse>.NotFound("User was not found.");
+
+            task.UserId = request.UserId;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            TaskResponse response = _mapper.Map<TaskResponse>(task);
+            return Result<TaskResponse>.Success(response);
+        }
+
+        public async Task<Result<TaskResponse>> ChangeTaskStatusAsync(Guid id, ChangeTaskStatusRequest request, CancellationToken cancellationToken)
+        {
+            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+            if (task == null)
+                return Result<TaskResponse>.NotFound("Task was not found.");
 
             task.Status = request.Status;
             await _context.SaveChangesAsync(cancellationToken);
 
-            return _mapper.Map<TaskResponse>(task);
+            TaskResponse response = _mapper.Map<TaskResponse>(task);
+            return Result<TaskResponse>.Success(response);
         }
 
-        public async Task<bool> DeleteByIdAsync(Guid id, CancellationToken cancellationToken)
+        public async Task<Result> DeleteByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
@@ -106,10 +114,10 @@ namespace ProTasker.Services
                 _context.TaskItems.Remove(task);
                 await _context.SaveChangesAsync(cancellationToken);
 
-                return true;
+                return Result.Success();
             }
 
-            return false;
+            return Result.NotFound();
         }
     }
 }

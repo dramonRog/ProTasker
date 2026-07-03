@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using ProTasker.Common;
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
 using ProTasker.Services;
@@ -18,9 +18,11 @@ namespace ProTasker.Controllers
         }
 
         [HttpGet]
-        public async Task<List<TaskResponse>> GetAllTasks(CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(List<TaskResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<TaskResponse>>> GetAllTasks(CancellationToken cancellationToken)
         {
-            return await _taskService.GetAllAsync(cancellationToken);
+            var result = await _taskService.GetAllAsync(cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpGet("{id:guid}")]
@@ -28,34 +30,31 @@ namespace ProTasker.Controllers
         [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<TaskResponse>> GetTaskById(Guid id, CancellationToken cancellationToken)
         {
-            TaskResponse? task = await _taskService.GetByIdAsync(id, cancellationToken);
-
-            if (task == null)
-                return NotFound();
-
-            return Ok(task);
+            var result = await _taskService.GetByIdAsync(id, cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpPost]
         [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<TaskResponse>> CreateTask(CreateTaskItemRequest request, CancellationToken cancellationToken)
         {
-            TaskResponse task = await _taskService.CreateAsync(request, cancellationToken);
+            var result = await _taskService.CreateAsync(request, cancellationToken);
 
-            return CreatedAtAction(nameof(GetTaskById), new { id = task.Id }, task);
+            if (!result.IsSuccess)
+                return result.CastToResultCode();
+
+            return CreatedAtAction(nameof(GetTaskById), new { id = result.Value!.Id }, result.Value);
         }
 
         [HttpPut("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<TaskResponse>> UpdateTask(Guid id, UpdateTaskItemRequest request, CancellationToken cancellationToken)
         {
-            TaskResponse? task = await _taskService.UpdateAsync(id, request, cancellationToken);
-
-            if (task == null)
-                return NotFound();
-
-            return Ok(task);
+            var result = await _taskService.UpdateAsync(id, request, cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpPatch("{id:guid}/status")]
@@ -63,12 +62,8 @@ namespace ProTasker.Controllers
         [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<TaskResponse>> ChangeTaskStatus(Guid id, ChangeTaskStatusRequest request, CancellationToken cancellationToken)
         {
-            TaskResponse? task = await _taskService.ChangeTaskStatusAsync(id, request, cancellationToken);
-
-            if (task == null)
-                return NotFound();
-
-            return Ok(task);
+            var result = await _taskService.ChangeTaskStatusAsync(id, request, cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpPatch("{id:guid}/assignee")]
@@ -76,12 +71,8 @@ namespace ProTasker.Controllers
         [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<TaskResponse>> AssignTask(Guid id, AssignTaskRequest request, CancellationToken cancellationToken)
         {
-            TaskResponse? task = await _taskService.AssignTaskAsync(id, request, cancellationToken);
-
-            if (task == null)
-                return NotFound();
-
-            return Ok(task);
+            var result = await _taskService.AssignTaskAsync(id, request, cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpDelete("{id:guid}")]
@@ -89,9 +80,8 @@ namespace ProTasker.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> DeleteTaskById(Guid id, CancellationToken cancellationToken)
         {
-            bool result = await _taskService.DeleteByIdAsync(id, cancellationToken);
-
-            return result ? NoContent() : NotFound();
+            var result = await _taskService.DeleteByIdAsync(id, cancellationToken);
+            return result.CastToResultCode();
         }
     }
 }

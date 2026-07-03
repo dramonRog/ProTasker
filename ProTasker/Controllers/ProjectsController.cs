@@ -18,6 +18,7 @@ namespace ProTasker.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(List<ProjectListItemResponse>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<ProjectListItemResponse>>> GetAllProjects(CancellationToken cancellationToken)
         {
             var projectItems = await _projectService.GetAllAsync(cancellationToken);
