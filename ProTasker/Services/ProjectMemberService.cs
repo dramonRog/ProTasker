@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
+using ProTasker.Common;
 using ProTasker.Data;
 using ProTasker.DTOs.Requests.ProjectMember;
 using ProTasker.DTOs.Responses.ProjectMember;
@@ -18,35 +19,42 @@ namespace ProTasker.Services
             _context = context;
             _mapper = mapper;
         }
-        public async Task<List<ProjectMemberResponse>> GetAllAsync(CancellationToken cancellationToken)
+        public async Task<Result<List<ProjectMemberResponse>>> GetAllAsync(CancellationToken cancellationToken)
         {
-            return await _context.ProjectMembers
+            var result = await _context.ProjectMembers
                 .AsNoTracking()
                 .ProjectTo<ProjectMemberResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
+
+            return Result<List<ProjectMemberResponse>>.Success(result);
         }
 
-        public async Task<ProjectMemberResponse?> GetByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
+        public async Task<Result<ProjectMemberResponse>> GetByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
         {
-            return await _context.ProjectMembers
+            var result = await _context.ProjectMembers
                 .AsNoTracking()
                 .ProjectTo<ProjectMemberResponse>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(pm => pm.UserId == userId && pm.ProjectId == projectId, cancellationToken);
+
+            return result == null ? Result<ProjectMemberResponse>.NotFound("Project member was not found.") : Result<ProjectMemberResponse>.Success(result);
         }
 
-        public async Task<ProjectMemberResponse?> AddProjectMemberToProjectAsync(Guid projectId, AddProjectMemberRequest request, CancellationToken cancellationToken)
+        public async Task<Result<ProjectMemberResponse>> AddProjectMemberToProjectAsync(Guid projectId, AddProjectMemberRequest request, CancellationToken cancellationToken)
         {
             User? user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
             if (user == null)
-                return null;
+                return Result<ProjectMemberResponse>.NotFound("User was not found.");
 
             Project? project = await _context.Projects
                 .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
 
             if (project == null)
-                return null;
+                return Result<ProjectMemberResponse>.NotFound("Project was not found.");
+
+            if (await _context.ProjectMembers.AnyAsync(pm => pm.UserId == request.UserId && pm.ProjectId == projectId, cancellationToken))
+                return Result<ProjectMemberResponse>.Conflict("User is already a member of this project.");
 
             ProjectMember projectMember = new ProjectMember 
             {
@@ -59,20 +67,21 @@ namespace ProTasker.Services
             _context.ProjectMembers.Add(projectMember);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return _mapper.Map<ProjectMemberResponse>(projectMember);
+            ProjectMemberResponse response = _mapper.Map<ProjectMemberResponse>(projectMember);
+            return Result<ProjectMemberResponse>.Success(response);
         }
 
-        public async Task<bool> DeleteByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
+        public async Task<Result> DeleteByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
         {
             ProjectMember? projectMember = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == userId && pm.ProjectId == projectId, cancellationToken);
 
             if (projectMember == null)
-                return false;
+                return Result.NotFound("Project member was not found.");
 
             _context.ProjectMembers.Remove(projectMember);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return true;
+            return Result.Success();
         }
     }
 }
