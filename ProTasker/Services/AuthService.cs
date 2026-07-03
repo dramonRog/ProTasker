@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using ProTasker.Common;
 using ProTasker.Data;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
@@ -20,12 +21,12 @@ namespace ProTasker.Services
             _tokenService = tokenService;
         }
 
-        public async Task<AuthResponse?> RegisterAsync(RegisterUserRequest request, CancellationToken cancellationToken)
+        public async Task<Result<AuthResponse>> RegisterAsync(RegisterUserRequest request, CancellationToken cancellationToken)
         {
             string normalizedEmail = request.Email.ToLowerInvariant();
 
             if (await _context.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken))
-                return null;
+                return Result<AuthResponse>.Conflict("Email is already in use.");
 
             User user = new User
             {
@@ -38,12 +39,13 @@ namespace ProTasker.Services
             _context.Users.Add(user);
             await _context.SaveChangesAsync(cancellationToken);
 
-            (string Token, DateTime expiresAt) tokenData = _tokenService.CreateToken(user);
+            (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(user);
+            AuthResponse response = new AuthResponse(tokenData.Token, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
 
-            return new AuthResponse(tokenData.Token, tokenData.expiresAt, _mapper.Map<UserResponse>(user));
+            return Result<AuthResponse>.Success(response);
         }
 
-        public async Task<AuthResponse?> LoginAsync(LoginUserRequest request, CancellationToken cancellationToken)
+        public async Task<Result<AuthResponse>> LoginAsync(LoginUserRequest request, CancellationToken cancellationToken)
         {
             string normalizedEmail = request.Email.ToLowerInvariant();
 
@@ -52,11 +54,12 @@ namespace ProTasker.Services
                 .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                return null;
+                return Result<AuthResponse>.Unauthorized("Invalid email or password.");
 
-            (string Token, DateTime expiresAt) tokenData = _tokenService.CreateToken(user);
+            (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(user);
+            AuthResponse response = new AuthResponse(tokenData.Token, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
 
-            return new AuthResponse(tokenData.Token, tokenData.expiresAt, _mapper.Map<UserResponse>(user));
+            return Result<AuthResponse>.Success(response);
         }
     }
 }
