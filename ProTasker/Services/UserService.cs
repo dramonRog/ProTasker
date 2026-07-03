@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
+using ProTasker.Common;
 using ProTasker.Data;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
@@ -19,29 +20,33 @@ namespace ProTasker.Services
             _context = context;
         }
 
-        public async Task<List<UserResponse>> GetAllAsync(CancellationToken cancellationToken)
+        public async Task<Result<List<UserResponse>>> GetAllAsync(CancellationToken cancellationToken)
         {
-            return await _context.Users
+            var usersList = await _context.Users
                 .AsNoTracking()
                 .ProjectTo<UserResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
+
+            return Result<List<UserResponse>>.Success(usersList);
         }
 
-        public async Task<UserResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        public async Task<Result<UserResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
-            return await _context.Users
+            var user = await _context.Users
                 .AsNoTracking()
                 .ProjectTo<UserResponse>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+            return user == null ? Result<UserResponse>.NotFound("User was not found.") : Result<UserResponse>.Success(user);
         }
 
-        public async Task<UserResponse?> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken)
+        public async Task<Result<UserResponse>> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken)
         {
             User? user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
             if (user == null)
-                return null;
+                return Result<UserResponse>.NotFound("User was not found.");
 
             if (request.FirstName is not null)
                 user.FirstName = request.FirstName;
@@ -54,7 +59,7 @@ namespace ProTasker.Services
                 string normalizedEmail = request.Email.ToLowerInvariant();
 
                 if (await _context.Users.AnyAsync(u => u.Id != id && u.Email == normalizedEmail, cancellationToken))
-                    return null;
+                    return Result<UserResponse>.Conflict("Email is already in use.");
 
                 user.Email = normalizedEmail;
             }
@@ -64,20 +69,21 @@ namespace ProTasker.Services
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return _mapper.Map<UserResponse>(user);
+            var userResponse = _mapper.Map<UserResponse>(user);
+            return Result<UserResponse>.Success(userResponse);
         }
 
-        public async Task<bool> DeleteByIdAsync(Guid id, CancellationToken cancellationToken)
+        public async Task<Result> DeleteByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
             if (user == null)
-                return false;
+                return Result.NotFound("User was not found.");
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return true;
+            return Result.Success();
         }
     }
 }

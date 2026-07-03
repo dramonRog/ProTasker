@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ProTasker.Common;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
 using ProTasker.Services;
@@ -19,9 +20,11 @@ namespace ProTasker.Controllers
         }
 
         [HttpGet]
-        public async Task<List<UserResponse>> GetAllUsers(CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<UserResponse>>> GetAllUsers(CancellationToken cancellationToken)
         {
-            return await _userService.GetAllAsync(cancellationToken);
+            var result = await _userService.GetAllAsync(cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpGet("{id:guid}")]
@@ -29,25 +32,18 @@ namespace ProTasker.Controllers
         [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<UserResponse>> GetUserById(Guid id, CancellationToken cancellationToken)
         {
-            UserResponse? response = await _userService.GetByIdAsync(id, cancellationToken);
-
-            if (response == null)
-                return NotFound();
-
-            return Ok(response);
+            var result = await _userService.GetByIdAsync(id, cancellationToken);
+            return result.CastToResultCode();
         }
 
-        [HttpPut("{id:guid}")]
+        [HttpPatch("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<UserResponse>> UpdateUser(Guid id, UpdateUserRequest request, CancellationToken cancellationToken)
         {
-            UserResponse? response = await _userService.UpdateUserAsync(id, request, cancellationToken);
-
-            if (response == null)
-                return NotFound();
-
-            return Ok(response);
+            var result = await _userService.UpdateUserAsync(id, request, cancellationToken);
+            return result.CastToResultCode();
         }
 
         [HttpDelete("{id:guid}")]
@@ -55,9 +51,8 @@ namespace ProTasker.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> DeleteUserById(Guid id, CancellationToken cancellationToken)
         {
-            bool result = await _userService.DeleteByIdAsync(id, cancellationToken);
-
-            return result ? NoContent() : NotFound();
+            var result = await _userService.DeleteByIdAsync(id, cancellationToken);
+            return result.CastToResultCode();
         }
     }
 }
