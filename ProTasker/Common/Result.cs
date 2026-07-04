@@ -18,6 +18,7 @@
         public static Result Conflict(string? error = null) => new(ResultStatus.Conflict, error);
         public static Result Unauthorized(string? error = null) => new(ResultStatus.Unauthorized, error);
         public static Result Validation(string? error = null) => new(ResultStatus.Validation, error);
+        public static Result Forbidden(string? error = null) => new(ResultStatus.Forbidden, error);
     }
 
     public class Result<T> : Result
@@ -35,6 +36,6 @@
         public static new Result<T> Conflict(string? error = null) => new(ResultStatus.Conflict, default, error);
         public static new Result<T> Unauthorized(string? error = null) => new(ResultStatus.Unauthorized, default, error);
         public static new Result<T> Validation(string? error = null) => new(ResultStatus.Validation, default, error);
-
+        public static new Result<T> Forbidden(string? error = null) => new(ResultStatus.Forbidden, default, error);
     }
 }

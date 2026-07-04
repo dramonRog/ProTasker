@@ -28,6 +28,7 @@ namespace ProTasker.Common
                 ResultStatus.Unauthorized => new UnauthorizedObjectResult(errorResponse),
                 ResultStatus.Validation => new BadRequestObjectResult(errorResponse),
                 ResultStatus.Conflict => new ConflictObjectResult(errorResponse),
+                ResultStatus.Forbidden => new ObjectResult(errorResponse) { StatusCode = StatusCodes.Status403Forbidden },
                 _ => new ObjectResult(errorResponse) { StatusCode = StatusCodes.Status500InternalServerError }
             };
         }

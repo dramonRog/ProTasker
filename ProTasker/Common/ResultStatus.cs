@@ -6,6 +6,7 @@
         NotFound,
         Conflict,
         Unauthorized,
-        Validation
+        Validation,
+        Forbidden
     }
 }
