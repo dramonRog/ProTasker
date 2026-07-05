@@ -113,6 +113,14 @@ namespace ProTasker.Services
                 return Result.Conflict("Can't remove the last administrator of the project.");
 
             _context.ProjectMembers.Remove(memberToRemove);
+
+            var userTasks = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId && t.UserId == userId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var task in userTasks)
+                task.UserId = null;
+
             await _context.SaveChangesAsync(cancellationToken);
 
             return Result.Success();
