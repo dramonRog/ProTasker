@@ -28,6 +28,7 @@ namespace ProTasker.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ProjectDetailsResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<ProjectDetailsResponse>> GetProjectById(Guid id, CancellationToken cancellationToken)
@@ -52,6 +53,7 @@ namespace ProTasker.Controllers
 
         [HttpPut("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProjectDetailsResponse), StatusCodes.Status200OK)]
         public async Task<ActionResult<ProjectDetailsResponse>> UpdateProject(Guid id, UpdateProjectRequest request, CancellationToken cancellationToken)
@@ -61,6 +63,7 @@ namespace ProTasker.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> DeleteProject(Guid id, CancellationToken cancellationToken)
