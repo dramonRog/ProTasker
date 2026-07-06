@@ -8,7 +8,7 @@ namespace ProTasker.Services
     {
         Task<Result<List<UserResponse>>> GetAllAsync(CancellationToken cancellationToken);
         Task<Result<UserResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken);
-        Task<Result<UserResponse>> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken);
-        Task<Result> DeleteByIdAsync(Guid id, CancellationToken cancellationToken);
+        Task<Result<UserResponse>> UpdateUserAsync(UpdateUserRequest request, CancellationToken cancellationToken);
+        Task<Result> DeleteUserAsync(CancellationToken cancellationToken);
     }
 }

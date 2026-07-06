@@ -5,6 +5,7 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
 using ProTasker.Models;
+using System.Linq.Expressions;
 
 namespace ProTasker.Services
 {
@@ -37,7 +38,17 @@ namespace ProTasker.Services
             };
 
             _context.Users.Add(user);
-            await _context.SaveChangesAsync(cancellationToken);
+
+            // Somebody can take email at this moment
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                return Result<AuthResponse>.Conflict("Email is already in use.");
+            }
+
 
             (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(user);
             AuthResponse response = new AuthResponse(tokenData.Token, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));

@@ -36,22 +36,23 @@ namespace ProTasker.Controllers
             return result.CastToResultCode();
         }
 
-        [HttpPatch("{id:guid}")]
+        [HttpPatch("me")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
-        public async Task<ActionResult<UserResponse>> UpdateUser(Guid id, UpdateUserRequest request, CancellationToken cancellationToken)
+        public async Task<ActionResult<UserResponse>> UpdateUser(UpdateUserRequest request, CancellationToken cancellationToken)
         {
-            var result = await _userService.UpdateUserAsync(id, request, cancellationToken);
+            var result = await _userService.UpdateUserAsync(request, cancellationToken);
             return result.CastToResultCode();
         }
 
-        [HttpDelete("{id:guid}")]
+        [HttpDelete("me")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> DeleteUserById(Guid id, CancellationToken cancellationToken)
+        public async Task<IActionResult> DeleteUser(CancellationToken cancellationToken)
         {
-            var result = await _userService.DeleteByIdAsync(id, cancellationToken);
+            var result = await _userService.DeleteUserAsync(cancellationToken);
             return result.CastToResultCode();
         }
     }
