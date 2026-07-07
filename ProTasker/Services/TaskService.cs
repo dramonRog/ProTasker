@@ -62,17 +62,20 @@ namespace ProTasker.Services
             return Result<List<TaskResponse>>.Success(tasks);
         }
 
-        public async Task<Result<TaskResponse>> GetByIdAsync(Guid projectId, Guid taskId, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> GetByIdAsync(Guid taskId, CancellationToken cancellationToken)
         {
-            Guid currentId = _userContextService.GetCurrentUserId();
-            if (!await _context.ProjectMembers.AnyAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken))
-                return Result<TaskResponse>.Forbidden("You are not a member of this project.");
-
             TaskItem? result = await _context.TaskItems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Id == taskId && t.ProjectId == projectId, cancellationToken);
+                .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
-            return result == null ? Result<TaskResponse>.NotFound("Task was not found.") : Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(result));
+            if (result == null)
+                return Result<TaskResponse>.NotFound("Task was not found.");
+
+            Guid currentId = _userContextService.GetCurrentUserId();
+            if (!await _context.ProjectMembers.AnyAsync(pm => pm.UserId == currentId && pm.ProjectId == result.ProjectId, cancellationToken))
+                return Result<TaskResponse>.Forbidden("You are not a member of this project.");
+
+            return Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(result));
         }
 
         public async Task<Result<TaskResponse>> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken)
@@ -96,6 +99,7 @@ namespace ProTasker.Services
             }
 
             TaskItem task = _mapper.Map<TaskItem>(request);
+            task.UserId = request.AssignedUserId;
 
             _context.TaskItems.Add(task);
             await _context.SaveChangesAsync(cancellationToken);
@@ -104,21 +108,20 @@ namespace ProTasker.Services
             return Result<TaskResponse>.Success(response);
         }
 
-        public async Task<Result<TaskResponse>> UpdateAsync(Guid projectId, Guid taskId, UpdateTaskItemRequest request, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> UpdateAsync(Guid taskId, UpdateTaskItemRequest request, CancellationToken cancellationToken)
         {
+            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+            if (task == null)
+                return Result<TaskResponse>.NotFound("Task was not found.");
+
             Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
+            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == task.ProjectId, cancellationToken);
+
             if (member == null)
                 return Result<TaskResponse>.Forbidden("You are not a member of this project.");
 
             if (member.Role != ProjectRole.Admin)
                 return Result<TaskResponse>.Forbidden("Only administrators can alter task data.");
-
-            TaskItem? task = await _context.TaskItems
-                .FirstOrDefaultAsync(t => t.Id == taskId && t.ProjectId == projectId, cancellationToken);
-
-            if (task == null)
-                return Result<TaskResponse>.NotFound("Task was not found.");
 
             if (request.Title is not null)
                 task.Title = request.Title;
@@ -130,54 +133,52 @@ namespace ProTasker.Services
                 task.DueDate = request.DueDate;
 
             await _context.SaveChangesAsync(cancellationToken);
-            
-            TaskResponse response = _mapper.Map<TaskResponse>(task);
-            return Result<TaskResponse>.Success(response);
+
+            return Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(task));
         }
 
-        public async Task<Result<TaskResponse>> AssignTaskAsync(Guid projectId, Guid taskId, AssignTaskRequest request, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> AssignTaskAsync(Guid taskId, AssignTaskRequest request, CancellationToken cancellationToken)
         {
-            Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
-
-            if (member == null)
-                return Result<TaskResponse>.Forbidden("You are not a member of this project.");
-
-            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId && t.ProjectId == projectId, cancellationToken);
+            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
             if (task == null)
                 return Result<TaskResponse>.NotFound("Task was not found.");
 
+            Guid currentId = _userContextService.GetCurrentUserId();
+            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == task.ProjectId, cancellationToken);
+
+            if (member == null)
+                return Result<TaskResponse>.Forbidden("You are not a member of this project.");
+
             if (member.Role != ProjectRole.Admin && currentId != request.UserId)
-                return Result<TaskResponse>.Forbidden("Only administrators can assign tasks.");
+                return Result<TaskResponse>.Forbidden("Only administrators can assign tasks to other members.");
 
             if (request.UserId.HasValue)
             {
-                ProjectMember? memberAssignee = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == request.UserId && pm.ProjectId == projectId, cancellationToken);
+                bool isAssigneeMember = await _context.ProjectMembers.AnyAsync(pm => pm.UserId == request.UserId && pm.ProjectId == task.ProjectId, cancellationToken);
 
-                if (memberAssignee == null)
-                    return Result<TaskResponse>.NotFound("Member was not found.");
+                if (!isAssigneeMember)
+                    return Result<TaskResponse>.NotFound("Assigned member was not found in the project.");
             }
 
             task.UserId = request.UserId;
             await _context.SaveChangesAsync(cancellationToken);
 
-            TaskResponse response = _mapper.Map<TaskResponse>(task);
-            return Result<TaskResponse>.Success(response);
+            return Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(task));
         }
 
-        public async Task<Result<TaskResponse>> ChangeTaskStatusAsync(Guid projectId, Guid taskId, ChangeTaskStatusRequest request, CancellationToken cancellationToken)
+        public async Task<Result<TaskResponse>> ChangeTaskStatusAsync(Guid taskId, ChangeTaskStatusRequest request, CancellationToken cancellationToken)
         {
-            Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
-            
-            if (member == null)
-                return Result<TaskResponse>.Forbidden("You are not a member of this project.");
-
-            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId && t.ProjectId == projectId, cancellationToken);
+            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
             if (task == null)
                 return Result<TaskResponse>.NotFound("Task was not found.");
+
+            Guid currentId = _userContextService.GetCurrentUserId();
+            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == task.ProjectId, cancellationToken);
+
+            if (member == null)
+                return Result<TaskResponse>.Forbidden("You are not a member of this project.");
 
             if (member.Role != ProjectRole.Admin && currentId != task.UserId && task.UserId != null)
                 return Result<TaskResponse>.Forbidden("Only administrators can change the task status of other members.");
@@ -185,14 +186,17 @@ namespace ProTasker.Services
             task.Status = request.Status;
             await _context.SaveChangesAsync(cancellationToken);
 
-            TaskResponse response = _mapper.Map<TaskResponse>(task);
-            return Result<TaskResponse>.Success(response);
+            return Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(task));
         }
 
-        public async Task<Result> DeleteByIdAsync(Guid projectId, Guid taskId, CancellationToken cancellationToken)
+        public async Task<Result> DeleteByIdAsync(Guid taskId, CancellationToken cancellationToken)
         {
+            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+            if (task == null)
+                return Result.NotFound("Task was not found.");
+
             Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
+            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == task.ProjectId, cancellationToken);
 
             if (member == null)
                 return Result.Forbidden("You are not a member of this project.");
@@ -200,17 +204,10 @@ namespace ProTasker.Services
             if (member.Role != ProjectRole.Admin)
                 return Result.Forbidden("Only administrators can remove tasks.");
 
-            TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId && t.ProjectId == projectId, cancellationToken);
+            _context.TaskItems.Remove(task);
+            await _context.SaveChangesAsync(cancellationToken);
 
-            if (task != null)
-            {
-                _context.TaskItems.Remove(task);
-                await _context.SaveChangesAsync(cancellationToken);
-
-                return Result.Success();
-            }
-
-            return Result.NotFound("Task was not found.");
+            return Result.Success();
         }
     }
 }

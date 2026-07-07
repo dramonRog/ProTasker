@@ -86,7 +86,10 @@ namespace ProTasker.Services
         {
             Guid currentUserId = _userContextService.GetCurrentUserId();
 
-            Project? project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+            Project? project = await _context.Projects
+                .Include(p => p.ProjectMembers)
+                    .ThenInclude(pm => pm.User)
+                .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
             if (project == null)
                 return Result<ProjectDetailsResponse>.NotFound("Project was not found.");
 
