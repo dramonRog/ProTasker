@@ -22,7 +22,8 @@ namespace ProTasker.Data
 
                 entity.HasOne(pm => pm.Project)
                     .WithMany(p => p.ProjectMembers)
-                    .HasForeignKey(pm => pm.ProjectId);
+                    .HasForeignKey(pm => pm.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(pm => pm.User)
                     .WithMany(u => u.ProjectMembers)
@@ -33,11 +34,13 @@ namespace ProTasker.Data
             {
                 entity.HasOne(ti => ti.Project)
                     .WithMany(p => p.Tasks)
-                    .HasForeignKey(ti => ti.ProjectId);
+                    .HasForeignKey(ti => ti.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(ti => ti.User)
                     .WithMany(u => u.AssignedTasks)
-                    .HasForeignKey(ti => ti.UserId);
+                    .HasForeignKey(ti => ti.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.Property(ti => ti.Status)
                     .HasConversion<string>();
@@ -46,8 +49,6 @@ namespace ProTasker.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
-
-
         }
     }
 }

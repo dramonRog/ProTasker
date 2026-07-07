@@ -47,7 +47,7 @@ namespace ProTasker.Migrations
                 {
                     ProjectId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    AddedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    AddedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
