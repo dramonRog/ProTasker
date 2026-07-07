@@ -40,7 +40,7 @@ namespace ProTasker.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Projects");
+                    b.ToTable("Projects", (string)null);
                 });
 
             modelBuilder.Entity("ProTasker.Models.ProjectMember", b =>
@@ -61,7 +61,7 @@ namespace ProTasker.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ProjectMembers");
+                    b.ToTable("ProjectMembers", (string)null);
                 });
 
             modelBuilder.Entity("ProTasker.Models.TaskItem", b =>
@@ -99,7 +99,7 @@ namespace ProTasker.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("TaskItems");
+                    b.ToTable("TaskItems", (string)null);
                 });
 
             modelBuilder.Entity("ProTasker.Models.User", b =>
@@ -132,7 +132,7 @@ namespace ProTasker.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("ProTasker.Models.ProjectMember", b =>

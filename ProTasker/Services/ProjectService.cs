@@ -43,12 +43,16 @@ namespace ProTasker.Services
             if (!await _context.ProjectMembers.AnyAsync(pm => pm.UserId == currentUserId && pm.ProjectId == projectId, cancellationToken))
                 return Result<ProjectDetailsResponse>.Forbidden("You are not a member of this project.");
                     
-            ProjectDetailsResponse? result = await _context.Projects
+            Project? project = await _context.Projects
                 .AsNoTracking()
-                .ProjectTo<ProjectDetailsResponse>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
 
-            return result == null ? Result<ProjectDetailsResponse>.NotFound("Project was not found.") : Result<ProjectDetailsResponse>.Success(result);
+            if (project == null)
+                return Result<ProjectDetailsResponse>.NotFound("Project was not found.");
+
+            ProjectDetailsResponse result = _mapper.Map<ProjectDetailsResponse>(project);
+
+            return Result<ProjectDetailsResponse>.Success(result);
         }
 
         public async Task<Result<ProjectDetailsResponse>> CreateAsync(CreateProjectRequest request, CancellationToken cancellationToken)
@@ -61,8 +65,7 @@ namespace ProTasker.Services
                 Description = request.Description
             };
 
-            User user = new User { Id = currentUserId };
-            _context.Users.Attach(user);
+            User user = await _context.Users.FirstAsync(u => u.Id == currentUserId, cancellationToken);
 
             ProjectMember admin = new ProjectMember
             {

@@ -53,6 +53,16 @@ namespace ProTasker.Controllers
             return CreatedAtAction(nameof(GetMemberById), new { userId = request.UserId, projectId = projectId }, result.Value);
         }
 
+        [HttpPatch("{userId:guid}/{projectId:guid}")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProjectMemberResponse), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ProjectMemberResponse>> ChangeProjectMemberRole(Guid userId, Guid projectId, ChangeProjectMemberRole request, CancellationToken cancellationToken)
+        {
+            var result = await _projectMemberService.ChangeProjectMemberRoleAsync(userId, projectId, request, cancellationToken);
+            return result.CastToResultCode();
+        }
+
         [HttpDelete("{userId:guid}/{projectId:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]

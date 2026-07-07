@@ -44,10 +44,10 @@ namespace ProTasker.Services
 
             var result = await _context.ProjectMembers
                 .AsNoTracking()
-                .ProjectTo<ProjectMemberResponse>(_mapper.ConfigurationProvider)
+                    .Include(pm => pm.User)
                 .FirstOrDefaultAsync(pm => pm.UserId == userId && pm.ProjectId == projectId, cancellationToken);
 
-            return result == null ? Result<ProjectMemberResponse>.NotFound("Project member was not found.") : Result<ProjectMemberResponse>.Success(result);
+            return result == null ? Result<ProjectMemberResponse>.NotFound("Project member was not found.") : Result<ProjectMemberResponse>.Success(_mapper.Map<ProjectMemberResponse>(result));
         }
 
         public async Task<Result<ProjectMemberResponse>> AddProjectMemberToProjectAsync(Guid projectId, AddProjectMemberRequest request, CancellationToken cancellationToken)
@@ -58,20 +58,15 @@ namespace ProTasker.Services
             if (member == null)
                 return Result<ProjectMemberResponse>.Forbidden("You are not a member of this project.");
 
-            if (member.Role != ProjectRole.Admin)
-                return Result<ProjectMemberResponse>.Forbidden("Only administrators can add users to the project.");
-
-            User? user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
-
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
             if (user == null)
                 return Result<ProjectMemberResponse>.NotFound("User was not found.");
 
-            Project? project = await _context.Projects
-                .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
-
-            if (project == null)
+            if (!await _context.Projects.AnyAsync(p => p.Id == projectId, cancellationToken))
                 return Result<ProjectMemberResponse>.NotFound("Project was not found.");
+
+            if (member.Role != ProjectRole.Admin)
+                return Result<ProjectMemberResponse>.Forbidden("Only administrators can add users to the project.");
 
             if (await _context.ProjectMembers.AnyAsync(pm => pm.UserId == request.UserId && pm.ProjectId == projectId, cancellationToken))
                 return Result<ProjectMemberResponse>.Conflict("User is already a member of this project.");
@@ -80,9 +75,8 @@ namespace ProTasker.Services
             {
                 UserId = request.UserId,
                 ProjectId = projectId,
-                User = user,
-                Project = project,
-                Role = request.Role
+                Role = request.Role,
+                User = user
             };
 
             _context.ProjectMembers.Add(projectMember);
@@ -90,6 +84,37 @@ namespace ProTasker.Services
 
             ProjectMemberResponse response = _mapper.Map<ProjectMemberResponse>(projectMember);
             return Result<ProjectMemberResponse>.Success(response);
+        }
+
+        public async Task<Result<ProjectMemberResponse>> ChangeProjectMemberRoleAsync(Guid userId, Guid projectId, ChangeProjectMemberRole request, CancellationToken cancellationToken)
+        {
+            Guid currentUserId = _userContextService.GetCurrentUserId();
+
+            ProjectMember? admin = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentUserId && pm.ProjectId == projectId, cancellationToken);
+            if (admin == null)
+                return Result<ProjectMemberResponse>.Forbidden("You are not a member of this project.");
+
+            if (admin.Role != ProjectRole.Admin)
+                return Result<ProjectMemberResponse>.Forbidden("Only administrators can change member role.");
+
+            ProjectMember? projectMember = await _context.ProjectMembers
+                .Include(pm => pm.User)
+                .FirstOrDefaultAsync(pm => pm.ProjectId == projectId && pm.UserId == userId, cancellationToken);
+
+            if (projectMember == null)
+                return Result<ProjectMemberResponse>.NotFound("Member was not found.");
+
+            if (projectMember.Role == request.Role)
+                return Result<ProjectMemberResponse>.Success(_mapper.Map<ProjectMemberResponse>(projectMember));
+
+            if (projectMember.Role == ProjectRole.Admin && request.Role != ProjectRole.Admin 
+                && !await _context.ProjectMembers.AnyAsync(pm => pm.ProjectId == projectId && pm.UserId != userId && pm.Role == ProjectRole.Admin, cancellationToken))
+                    return Result<ProjectMemberResponse>.Conflict("In the project must be at least one administrator.");
+
+            projectMember.Role = request.Role;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return Result<ProjectMemberResponse>.Success(_mapper.Map<ProjectMemberResponse>(projectMember));
         }
 
         public async Task<Result> DeleteByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
@@ -114,12 +139,9 @@ namespace ProTasker.Services
 
             _context.ProjectMembers.Remove(memberToRemove);
 
-            var userTasks = await _context.TaskItems
+            await _context.TaskItems
                 .Where(t => t.ProjectId == projectId && t.UserId == userId)
-                .ToListAsync(cancellationToken);
-
-            foreach (var task in userTasks)
-                task.UserId = null;
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.UserId, (Guid?)null));
 
             await _context.SaveChangesAsync(cancellationToken);
 

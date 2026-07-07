@@ -50,10 +50,10 @@ namespace ProTasker.Services
             var user = await _context.Users
                 .AsNoTracking()
                 .Where(u => u.Id == currentUserId || u.ProjectMembers.Any(pm => myProjectsIds.Contains(pm.ProjectId)))
-                .ProjectTo<UserResponse>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
-            return user == null ? Result<UserResponse>.NotFound("User was not found.") : Result<UserResponse>.Success(user);
+
+            return user == null ? Result<UserResponse>.NotFound("User was not found.") : Result<UserResponse>.Success(_mapper.Map<UserResponse>(user));
         }
 
         public async Task<Result<UserResponse>> UpdateUserAsync(UpdateUserRequest request, CancellationToken cancellationToken)

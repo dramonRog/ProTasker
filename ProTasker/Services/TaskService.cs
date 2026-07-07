@@ -68,12 +68,11 @@ namespace ProTasker.Services
             if (!await _context.ProjectMembers.AnyAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken))
                 return Result<TaskResponse>.Forbidden("You are not a member of this project.");
 
-            TaskResponse? result = await _context.TaskItems
+            TaskItem? result = await _context.TaskItems
                 .AsNoTracking()
-                .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(t => t.Id == taskId && t.ProjectId == projectId, cancellationToken);
 
-            return result == null ? Result<TaskResponse>.NotFound("Task was not found.") : Result<TaskResponse>.Success(result);
+            return result == null ? Result<TaskResponse>.NotFound("Task was not found.") : Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(result));
         }
 
         public async Task<Result<TaskResponse>> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken)
@@ -86,6 +85,15 @@ namespace ProTasker.Services
 
             if (member.Role != ProjectRole.Admin)
                 return Result<TaskResponse>.Forbidden("Only administrators can create tasks");
+
+            if (request.AssignedUserId.HasValue)
+            {
+                bool isAssigneeMember = await _context.ProjectMembers
+                    .AnyAsync(pm => pm.ProjectId == request.ProjectId && pm.UserId == request.AssignedUserId.Value, cancellationToken);
+
+                if (!isAssigneeMember)
+                    return Result<TaskResponse>.NotFound("Assigned user is not a member of this project.");
+            }
 
             TaskItem task = _mapper.Map<TaskItem>(request);
 
@@ -140,7 +148,7 @@ namespace ProTasker.Services
             if (task == null)
                 return Result<TaskResponse>.NotFound("Task was not found.");
 
-            if (member.Role != ProjectRole.Admin && currentId != request.UserId && task.UserId != null)
+            if (member.Role != ProjectRole.Admin && currentId != request.UserId)
                 return Result<TaskResponse>.Forbidden("Only administrators can assign tasks.");
 
             if (request.UserId.HasValue)
