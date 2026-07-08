@@ -14,12 +14,14 @@ namespace ProTasker.Services
         private readonly IMapper _mapper;
         private readonly IUserContextService _userContextService;
         private readonly AppDbContext _context;
+        private readonly ILogger<UserService> _logger;
 
-        public UserService(IMapper mapper, IUserContextService userContextService, AppDbContext context)
+        public UserService(IMapper mapper, IUserContextService userContextService, AppDbContext context, ILogger<UserService> logger)
         {
             _mapper = mapper;
             _userContextService = userContextService;
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Result<List<UserResponse>>> GetAllAsync(CancellationToken cancellationToken)
@@ -76,7 +78,10 @@ namespace ProTasker.Services
                 string normalizedEmail = request.Email.ToLowerInvariant();
 
                 if (await _context.Users.AnyAsync(u => u.Id != currentUserId && u.Email == normalizedEmail, cancellationToken))
+                {
+                    _logger.LogWarning("User {UserId} attempted to change email to {NewEmail}, but it is already taken.", currentUserId, normalizedEmail);
                     return Result<UserResponse>.Conflict("Email is already in use.");
+                }
 
                 user.Email = normalizedEmail;
             }
@@ -91,8 +96,12 @@ namespace ProTasker.Services
             }
             catch (DbUpdateException)
             {
+                _logger.LogWarning("Race condition: User {UserId} attempted to change email to {NewEmail}, but it was taken during save.", currentUserId, request.Email);
                 return Result<UserResponse>.Conflict("Email is already in use.");
             }
+
+            _logger.LogInformation("User {UserId} successfully updated their profile.", currentUserId);
+
             var userResponse = _mapper.Map<UserResponse>(user);
             return Result<UserResponse>.Success(userResponse);
         }
@@ -110,10 +119,15 @@ namespace ProTasker.Services
                 && p.ProjectMembers.Count(pm => pm.Role == ProjectRole.Admin) == 1);
 
             if (project != null)
+            {
+                _logger.LogWarning("User {UserId} attempted to delete account but was blocked because they are the sole admin of project {ProjectId}", currentUserId, project.Id);
                 return Result.Conflict("There is at least one project, where only you are an admin. You must remove it or assign another user as the admin.");
+            }
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("User {UserId} successfully deleted their account.", currentUserId);
 
             return Result.Success();
         }
