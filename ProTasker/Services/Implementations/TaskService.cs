@@ -146,6 +146,9 @@ namespace ProTasker.Services.Implementations
             if (request.DueDate is not null)
                 task.DueDate = request.DueDate;
 
+            if (request.Priority is not null)
+                task.Priority = request.Priority.Value;
+
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Admin {UserId} successfully updated data for task {TaskId}.", currentId, taskId);
@@ -197,6 +200,7 @@ namespace ProTasker.Services.Implementations
 
         public async Task<Result<TaskResponse>> MoveTaskToBoardAsync(Guid taskId, MoveTaskToBoardRequest request, CancellationToken cancellationToken)
         {
+            Guid currentId = _userContextService.GetCurrentUserId();
             Result<TaskItem> taskResult = await GetTaskIfMemberAsync(taskId, trackChanges: true, cancellationToken);
             if (!taskResult.IsSuccess)
                 return Result<TaskResponse>.NotFound(taskResult.Error);
@@ -214,7 +218,25 @@ namespace ProTasker.Services.Implementations
             taskResult.Value.Board = board;
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("User {UserId} successfully changed status of task {TaskId} to board {BoardId} ('{BoardName}').", taskResult.Value.UserId, taskId, board.Id, board.Name);
+            _logger.LogInformation("User {UserId} successfully changed status of task {TaskId} to board {BoardId} ('{BoardName}').", currentId, taskId, board.Id, board.Name);
+            return Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(taskResult.Value));
+        }
+
+        public async Task<Result<TaskResponse>> ChangeTaskPriorityAsync(Guid taskId, ChangeTaskPriorityRequest request, CancellationToken cancellationToken)
+        {
+            Guid currentId = _userContextService.GetCurrentUserId();
+            Result<TaskItem> taskResult = await GetTaskIfMemberAsync(taskId, trackChanges: true, cancellationToken);
+            if (!taskResult.IsSuccess)
+                return Result<TaskResponse>.NotFound(taskResult.Error);
+
+            Result userResult = await EnsureCanModifyTaskAsync(taskResult.Value!, cancellationToken);
+            if (!userResult.IsSuccess)
+                return Result<TaskResponse>.Forbidden(userResult.Error);
+
+            taskResult.Value!.Priority = request.Priority;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("User {UserId} successfully changed the priority of task {TaskId} into {Priority}.", currentId, taskResult.Value.Id, request.Priority);
             return Result<TaskResponse>.Success(_mapper.Map<TaskResponse>(taskResult.Value));
         }
 

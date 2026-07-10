@@ -95,6 +95,16 @@ namespace ProTasker.Controllers
             return result.CastToResultCode();
         }
 
+        [HttpPatch("{taskId:guid}/priority")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TaskResponse>> ChangeTaskPriority(Guid taskId, ChangeTaskPriorityRequest request, CancellationToken cancellationToken)
+        {
+            var result = await _taskService.ChangeTaskPriorityAsync(taskId, request, cancellationToken);
+            return result.CastToResultCode();
+        }
+
         [HttpDelete("{taskId:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]

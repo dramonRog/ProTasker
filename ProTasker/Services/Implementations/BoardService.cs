@@ -135,10 +135,6 @@ namespace ProTasker.Services.Implementations
             if (!access.IsSuccess)
                 return Result.Forbidden(access.Error);
 
-            bool hasTasks = await _context.TaskItems.AnyAsync(t => t.BoardId == boardId, cancellationToken);
-            if (hasTasks)
-                return Result.Conflict("Cannot delete a board that contains tasks.");
-
             bool isLastBoard = !await _context.Boards
                 .AnyAsync(b => b.ProjectId == board.ProjectId && b.Id != boardId, cancellationToken);
 

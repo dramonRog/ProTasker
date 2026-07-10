@@ -47,6 +47,9 @@ namespace ProTasker.Data
                     .WithMany(b => b.Tasks)
                     .HasForeignKey(ti => ti.BoardId)
                     .OnDelete(DeleteBehavior.SetNull);
+
+                entity.Property(ti => ti.Priority)
+                    .HasConversion<string>();
             });
 
             modelBuilder.Entity<User>()

@@ -8,7 +8,7 @@ namespace ProTasker.Validators.TaskItem
         public UpdateTaskItemRequestValidator()
         {
             RuleFor(x => x)
-                .Must(x => x.Title is not null || x.Description is not null || x.DueDate.HasValue)
+                .Must(x => x.Title is not null || x.Description is not null || x.DueDate.HasValue || x.Priority.HasValue)
                 .WithMessage("Submit at least one field to update.");
 
             RuleFor(x => x.Title)
@@ -23,6 +23,10 @@ namespace ProTasker.Validators.TaskItem
             RuleFor(x => x.DueDate)
                 .GreaterThan(DateTime.UtcNow).WithMessage("Due date must be in the future.")
                 .When(x => x.DueDate.HasValue);
+
+            RuleFor(x => x.Priority)
+                .IsInEnum().WithMessage("Invalid priority level.")
+                .When(x => x.Priority.HasValue);
         }
     }
 

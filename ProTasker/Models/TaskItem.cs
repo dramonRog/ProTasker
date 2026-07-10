@@ -8,6 +8,7 @@ namespace ProTasker.Models
         public Guid? BoardId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public TaskPriority Priority { get; set; } = TaskPriority.Unassigned;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? DueDate { get; set; }
         public Project? Project { get; set; }

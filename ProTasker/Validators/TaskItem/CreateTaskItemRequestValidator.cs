@@ -26,6 +26,9 @@ namespace ProTasker.Validators.TaskItem
             RuleFor(x => x.BoardId)
                 .NotEmpty().WithMessage("Board id cannot be empty.")
                 .When(x => x.BoardId.HasValue);
+
+            RuleFor(x => x.Priority)
+                .IsInEnum().WithMessage("Invalid priority level.");
         }
     }
 }

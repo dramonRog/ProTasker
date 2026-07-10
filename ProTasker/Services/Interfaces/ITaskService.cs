@@ -13,6 +13,7 @@ namespace ProTasker.Services.Interfaces
         Task<Result<TaskResponse>> UpdateAsync(Guid taskId, UpdateTaskItemRequest request, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> AssignTaskAsync(Guid taskId, AssignTaskRequest request, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> MoveTaskToBoardAsync(Guid taskId, MoveTaskToBoardRequest request, CancellationToken cancellationToken);
+        Task<Result<TaskResponse>> ChangeTaskPriorityAsync(Guid taskId, ChangeTaskPriorityRequest request, CancellationToken cancellationToken);
         Task<Result> DeleteByIdAsync(Guid taskId, CancellationToken cancellationToken);
     }
 }
