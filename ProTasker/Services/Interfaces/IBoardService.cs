@@ -11,6 +11,7 @@ namespace ProTasker.Services.Interfaces
         Task<Result<BoardResponse>> GetByIdAsync(Guid boardId, CancellationToken cancellationToken);
         Task<Result<BoardResponse>> CreateAsync(Guid projectId, CreateBoardRequest request, CancellationToken cancellationToken);
         Task<Result<BoardResponse>> UpdateAsync(Guid boardId, UpdateBoardRequest request, CancellationToken cancellationToken);
+        Task<Result> ReorderAsync(Guid projectId, ReorderBoardsRequest request, CancellationToken cancellationToken);
         Task<Result> DeleteAsync(Guid boardId, CancellationToken cancellationToken);
     }
 }

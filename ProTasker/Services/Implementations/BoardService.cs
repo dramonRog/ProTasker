@@ -7,6 +7,7 @@ using ProTasker.DTOs.Requests.Board;
 using ProTasker.DTOs.Responses.Board;
 using ProTasker.Models;
 using ProTasker.Services.Interfaces;
+using System.Transactions;
 
 namespace ProTasker.Services.Implementations
 {
@@ -123,6 +124,52 @@ namespace ProTasker.Services.Implementations
             _logger.LogInformation("Board {BoardId} updated.", boardId);
 
             return Result<BoardResponse>.Success(_mapper.Map<BoardResponse>(board));
+        }
+
+        public async Task<Result> ReorderAsync(Guid projectId, ReorderBoardsRequest request, CancellationToken cancellationToken)
+        {
+            Result adminResult = await EnsureAdminAsync(projectId, cancellationToken);
+            if (!adminResult.IsSuccess)
+                return Result.Forbidden(adminResult.Error);
+
+            List<Board> boards = await _context.Boards
+                .Where(b => b.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
+
+            if (boards.Count != request.BoardIds.Count || !request.BoardIds.All(id => boards.Any(b => b.Id == id)))
+                return Result.Validation("The provided board IDs are invalid or do not match the existing boards in the project.");
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                foreach (var board in boards)
+                {
+                    board.OrderIndex = -Math.Abs(board.OrderIndex) - 1000;
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                Dictionary<Guid, Board> boardsDict = boards.ToDictionary(b => b.Id);
+                for (int i = 0; i < request.BoardIds.Count; i++)
+                {
+                    var board = boardsDict[request.BoardIds[i]];
+                    board.OrderIndex = i;
+                }
+                await _context.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+
+            Guid currentId = _userContextService.GetCurrentUserId();
+            _logger.LogInformation("Admin {UserId} successfully reordered boards in project {ProjectId}.", currentId, projectId);
+
+            return Result.Success();
         }
 
         public async Task<Result> DeleteAsync(Guid boardId, CancellationToken cancellationToken)

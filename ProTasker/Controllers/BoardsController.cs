@@ -66,6 +66,18 @@ namespace ProTasker.Controllers
             return result.CastToResultCode();
         }
 
+        [HttpPut("project/{projectId:guid}/reorder")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> ReorderBoards(Guid projectId, ReorderBoardsRequest request, CancellationToken cancellationToken)
+        {
+            var result = await _boardService.ReorderAsync(projectId, request, cancellationToken);
+            return result.CastToResultCode();
+        }
+
+
         [HttpDelete("{boardId:guid}")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
