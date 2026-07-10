@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProTasker.Common;
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
-using ProTasker.Services;
+using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Controllers
 {
@@ -74,13 +74,14 @@ namespace ProTasker.Controllers
             return result.CastToResultCode();
         }
 
-        [HttpPatch("{taskId:guid}/status")]
+        [HttpPatch("{taskId:guid}/board")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(TaskResponse), StatusCodes.Status200OK)]
-        public async Task<ActionResult<TaskResponse>> ChangeTaskStatus(Guid taskId, ChangeTaskStatusRequest request, CancellationToken cancellationToken)
+        public async Task<ActionResult<TaskResponse>> MoveTaskToBoard(Guid taskId, MoveTaskToBoardRequest request, CancellationToken cancellationToken)
         {
-            var result = await _taskService.ChangeTaskStatusAsync(taskId, request, cancellationToken);
+            var result = await _taskService.MoveTaskToBoardAsync(taskId, request, cancellationToken);
             return result.CastToResultCode();
         }
 

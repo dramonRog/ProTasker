@@ -6,8 +6,9 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.Project;
 using ProTasker.DTOs.Responses.Project;
 using ProTasker.Models;
+using ProTasker.Services.Interfaces;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Implementations
 {
     public class ProjectService : IProjectService
     {
@@ -78,8 +79,16 @@ namespace ProTasker.Services
                 Project = project,
             };
 
+            Board[] defaultBoards =
+            [
+                new Board { Name = "To Do", OrderIndex = 0, Project = project },
+                new Board { Name = "In Progress", OrderIndex = 1, Project = project },
+                new Board { Name = "Done", OrderIndex = 2, Project = project }
+            ];
+
             _context.Projects.Add(project);
             _context.ProjectMembers.Add(admin);
+            _context.Boards.AddRange(defaultBoards);
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("User {UserId} successfully created project {ProjectId} ('{ProjectName}').", currentUserId, project.Id, project.Name);

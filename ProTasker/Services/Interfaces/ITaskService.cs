@@ -2,7 +2,7 @@
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Interfaces
 {
     public interface ITaskService
     {
@@ -12,7 +12,7 @@ namespace ProTasker.Services
         Task<Result<TaskResponse>> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> UpdateAsync(Guid taskId, UpdateTaskItemRequest request, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> AssignTaskAsync(Guid taskId, AssignTaskRequest request, CancellationToken cancellationToken);
-        Task<Result<TaskResponse>> ChangeTaskStatusAsync(Guid taskId, ChangeTaskStatusRequest request, CancellationToken cancellationToken);
+        Task<Result<TaskResponse>> MoveTaskToBoardAsync(Guid taskId, MoveTaskToBoardRequest request, CancellationToken cancellationToken);
         Task<Result> DeleteByIdAsync(Guid taskId, CancellationToken cancellationToken);
     }
 }

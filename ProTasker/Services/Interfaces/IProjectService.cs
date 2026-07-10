@@ -2,7 +2,7 @@
 using ProTasker.DTOs.Requests.Project;
 using ProTasker.DTOs.Responses.Project;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Interfaces
 {
     public interface IProjectService
     {

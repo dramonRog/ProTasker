@@ -6,8 +6,9 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
 using ProTasker.Models;
+using ProTasker.Services.Interfaces;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Implementations
 {
     public class UserService : IUserService
     {

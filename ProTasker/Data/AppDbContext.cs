@@ -11,6 +11,7 @@ namespace ProTasker.Data
         public DbSet<Project> Projects { get; set; }
         public DbSet<TaskItem> TaskItems { get; set; }
         public DbSet<ProjectMember> ProjectMembers { get; set; }
+        public DbSet<Board> Boards { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -42,13 +43,26 @@ namespace ProTasker.Data
                     .HasForeignKey(ti => ti.UserId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                entity.Property(ti => ti.Status)
-                    .HasConversion<string>();
+                entity.HasOne(ti => ti.Board)
+                    .WithMany(b => b.Tasks)
+                    .HasForeignKey(ti => ti.BoardId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            modelBuilder.Entity<Board>(entity =>
+            {
+                entity.HasOne(b => b.Project)
+                .WithMany(p => p.Boards)
+                .HasForeignKey(b => b.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(b => new { b.ProjectId, b.OrderIndex }).IsUnique();
+
+            });
         }
     }
 }

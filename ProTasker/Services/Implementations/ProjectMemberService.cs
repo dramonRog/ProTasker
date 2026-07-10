@@ -6,8 +6,9 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.ProjectMember;
 using ProTasker.DTOs.Responses.ProjectMember;
 using ProTasker.Models;
+using ProTasker.Services.Interfaces;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Implementations
 {
     public class ProjectMemberService : IProjectMemberService
     {

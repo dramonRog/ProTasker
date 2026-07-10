@@ -22,6 +22,10 @@ namespace ProTasker.Validators.TaskItem
                 .GreaterThan(DateTime.UtcNow)
                 .WithMessage("The due date must be in the future.")
                 .When(x => x.DueDate.HasValue);
+
+            RuleFor(x => x.BoardId)
+                .NotEmpty().WithMessage("Board id cannot be empty.")
+                .When(x => x.BoardId.HasValue);
         }
     }
 }

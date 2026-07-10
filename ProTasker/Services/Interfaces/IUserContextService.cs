@@ -1,4 +1,4 @@
-﻿namespace ProTasker.Services
+﻿namespace ProTasker.Services.Interfaces
 {
     public interface IUserContextService
     {

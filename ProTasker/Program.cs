@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProTasker.Data;
-using ProTasker.Services;
 using ProTasker.Validators.Project;
 using Scalar.AspNetCore;
 using System.Text;
@@ -13,6 +12,8 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Serilog;
 using ProTasker.Middlewares;
+using ProTasker.Services.Interfaces;
+using ProTasker.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,7 @@ builder.Services.AddScoped<IProjectMemberService, ProjectMemberService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IBoardService, BoardService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddFluentValidationAutoValidation();

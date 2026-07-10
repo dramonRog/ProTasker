@@ -10,7 +10,11 @@ namespace ProTasker.Mapping
         public TaskMappingProfile()
         {
             CreateMap<TaskItem, TaskResponse>();
-            CreateMap<CreateTaskItemRequest, TaskItem>();
+            CreateMap<CreateTaskItemRequest, TaskItem>()
+                .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.BoardId, opt => opt.Ignore())
+                .ForMember(dest => dest.Project, opt => opt.Ignore())
+                .ForMember(dest => dest.Board, opt => opt.Ignore());
         }
     }
 }

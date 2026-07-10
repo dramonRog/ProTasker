@@ -1,10 +1,11 @@
 ﻿using Microsoft.IdentityModel.Tokens;
 using ProTasker.Models;
+using ProTasker.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Implementations
 {
     public class TokenService : ITokenService
     {

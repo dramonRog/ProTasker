@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProTasker.Common;
 using ProTasker.DTOs.Requests.Project;
 using ProTasker.DTOs.Responses.Project;
-using ProTasker.Services;
+using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Controllers
 {

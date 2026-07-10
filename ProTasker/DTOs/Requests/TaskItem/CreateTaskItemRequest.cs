@@ -1,6 +1,4 @@
-﻿using ProTasker.Models;
-
-namespace ProTasker.DTOs.Requests.TaskItem
+﻿namespace ProTasker.DTOs.Requests.TaskItem
 {
     public record CreateTaskItemRequest(
         string Title, 
@@ -8,6 +6,6 @@ namespace ProTasker.DTOs.Requests.TaskItem
         DateTime? DueDate,
         Guid ProjectId,
         Guid? AssignedUserId = null,
-        ProTasker.Models.TaskStatus Status = Models.TaskStatus.ToDo
+        Guid? BoardId = null
     );
 }

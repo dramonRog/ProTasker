@@ -1,6 +1,7 @@
-﻿using System.Security.Claims;
+﻿using ProTasker.Services.Interfaces;
+using System.Security.Claims;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Implementations
 {
     public class UserContextService : IUserContextService
     {

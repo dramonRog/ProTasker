@@ -2,7 +2,7 @@
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
 
-namespace ProTasker.Services
+namespace ProTasker.Services.Interfaces
 {
     public interface IUserService
     {

@@ -1,7 +1,9 @@
-﻿namespace ProTasker.DTOs.Responses.TaskItem
+﻿using ProTasker.DTOs.Responses.Board;
+
+namespace ProTasker.DTOs.Responses.TaskItem
 {
     public record TaskResponse(
         Guid Id, Guid ProjectId, Guid? UserId, string Title,
-        string? Description, ProTasker.Models.TaskStatus Status, DateTime CreatedAt, 
-        DateTime? DueDate);
+        string? Description, DateTime CreatedAt, 
+        DateTime? DueDate, BoardSummaryResponse? Board);
 }
