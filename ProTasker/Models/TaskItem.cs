@@ -16,5 +16,6 @@ namespace ProTasker.Models
         public Project? Project { get; set; }
         public User? User { get; set; }
         public Board? Board { get; set; }
+        public ICollection<TaskComment> Comments { get; set; } = new List<TaskComment>();
     }
 }

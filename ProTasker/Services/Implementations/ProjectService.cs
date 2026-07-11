@@ -134,6 +134,12 @@ namespace ProTasker.Services.Implementations
             {
                 _context.Projects.Remove(project);
 
+                await _context.TaskComments
+                    .Where(tc => tc.Task!.ProjectId == projectId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(tc => tc.IsDeleted, true)
+                        .SetProperty(tc => tc.DeletedAt, DateTime.UtcNow), cancellationToken);
+
                 await _context.TaskItems
                     .Where(t => t.ProjectId == projectId)
                     .ExecuteUpdateAsync(s => s
@@ -143,9 +149,10 @@ namespace ProTasker.Services.Implementations
                 await _context.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Failed to delete project {ProjectId} and its cascaded entities.", projectId);
                 throw;
             }
 

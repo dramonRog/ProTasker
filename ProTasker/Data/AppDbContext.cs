@@ -12,6 +12,7 @@ namespace ProTasker.Data
         public DbSet<TaskItem> TaskItems { get; set; }
         public DbSet<ProjectMember> ProjectMembers { get; set; }
         public DbSet<Board> Boards { get; set; }
+        public DbSet<TaskComment> TaskComments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,8 +68,22 @@ namespace ProTasker.Data
 
             });
 
+            modelBuilder.Entity<TaskComment>(entity =>
+            {
+                entity.HasOne(tc => tc.Task)
+                    .WithMany(t => t.Comments)
+                    .HasForeignKey(tc => tc.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(tc => tc.User)
+                    .WithMany()
+                    .HasForeignKey(tc => tc.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
             modelBuilder.Entity<TaskItem>().HasQueryFilter(ti => !ti.IsDeleted);
             modelBuilder.Entity<Project>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<TaskComment>().HasQueryFilter(tc => !tc.IsDeleted);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

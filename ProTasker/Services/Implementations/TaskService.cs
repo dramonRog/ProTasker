@@ -248,8 +248,26 @@ namespace ProTasker.Services.Implementations
             if (!adminResult.IsSuccess)
                 return Result.Forbidden(adminResult.Error);
 
-            _context.TaskItems.Remove(taskResult.Value);
-            await _context.SaveChangesAsync(cancellationToken);
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                _context.TaskItems.Remove(taskResult.Value);
+
+                await _context.TaskComments
+                    .Where(tc => tc.TaskId == taskId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(tc => tc.IsDeleted, true)
+                        .SetProperty(tc => tc.DeletedAt, DateTime.UtcNow), cancellationToken);
+
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Failed to delete task {TaskId} and its comments.", taskId);
+                throw;
+            }
 
             _logger.LogInformation("Admin {UserId} permanently deleted task {TaskId} from project {ProjectId}.", currentId, taskId, taskResult.Value.ProjectId);
             return Result.Success();
