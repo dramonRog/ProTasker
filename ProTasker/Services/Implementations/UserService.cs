@@ -29,9 +29,9 @@ namespace ProTasker.Services.Implementations
         {
             Guid currentUserId = _userContextService.GetCurrentUserId();
 
-            var myProjectIds = _context.ProjectMembers
-                .Where(pm => pm.UserId == currentUserId)
-                .Select(pm => pm.ProjectId);
+            var myProjectIds = _context.Projects
+                .Where(p => p.ProjectMembers.Any(pm => pm.UserId == currentUserId))
+                .Select(p => p.Id);
             
             var usersList = await _context.Users
                 .AsNoTracking()
@@ -46,9 +46,9 @@ namespace ProTasker.Services.Implementations
         {
             Guid currentUserId = _userContextService.GetCurrentUserId();
 
-            var myProjectsIds = _context.ProjectMembers
-                .Where(pm => pm.UserId == currentUserId)
-                .Select(pm => pm.ProjectId);
+            var myProjectsIds = _context.Projects
+                .Where(p => p.ProjectMembers.Any(pm => pm.UserId == currentUserId))
+                .Select(p => p.Id);
 
             var user = await _context.Users
                 .AsNoTracking()
@@ -117,7 +117,7 @@ namespace ProTasker.Services.Implementations
 
             Project? project = await _context.Projects
                 .FirstOrDefaultAsync(p => p.ProjectMembers.Any(pm => pm.UserId == currentUserId && pm.Role == ProjectRole.Admin)
-                && p.ProjectMembers.Count(pm => pm.Role == ProjectRole.Admin) == 1);
+                && p.ProjectMembers.Count(pm => pm.Role == ProjectRole.Admin) == 1, cancellationToken);
 
             if (project != null)
             {

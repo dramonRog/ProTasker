@@ -7,7 +7,6 @@ using ProTasker.DTOs.Requests.Board;
 using ProTasker.DTOs.Responses.Board;
 using ProTasker.Models;
 using ProTasker.Services.Interfaces;
-using System.Transactions;
 
 namespace ProTasker.Services.Implementations
 {
@@ -15,20 +14,22 @@ namespace ProTasker.Services.Implementations
     {
         private readonly AppDbContext _context;
         private readonly IUserContextService _userContextService;
+        private readonly IProjectAccessService _projectAccessService;
         private readonly IMapper _mapper;
         private readonly ILogger<BoardService> _logger;
 
-        public BoardService(AppDbContext context, IUserContextService userContextService, IMapper mapper, ILogger<BoardService> logger)
+        public BoardService(AppDbContext context, IUserContextService userContextService, IProjectAccessService projectAccessService, IMapper mapper, ILogger<BoardService> logger)
         {
             _context = context;
             _userContextService = userContextService;
+            _projectAccessService = projectAccessService;
             _mapper = mapper;
             _logger = logger;
         }
 
         public async Task<Result<List<BoardResponse>>> GetAllByProjectAsync(Guid projectId, CancellationToken cancellationToken)
         {
-            Result access = await EnsureMemberAsync(projectId, cancellationToken);
+            Result access = await _projectAccessService.EnsureMemberAsync(projectId, cancellationToken);
             if (!access.IsSuccess)
                 return Result<List<BoardResponse>>.Forbidden(access.Error);
 
@@ -51,7 +52,7 @@ namespace ProTasker.Services.Implementations
             if (board == null)
                 return Result<BoardResponse>.NotFound("Board was not found.");
 
-            Result access = await EnsureMemberAsync(board.ProjectId, cancellationToken);
+            Result access = await _projectAccessService.EnsureMemberAsync(board.ProjectId, cancellationToken);
             if (!access.IsSuccess)
                 return Result<BoardResponse>.Forbidden(access.Error);
 
@@ -60,12 +61,9 @@ namespace ProTasker.Services.Implementations
 
         public async Task<Result<BoardResponse>> CreateAsync(Guid projectId, CreateBoardRequest request, CancellationToken cancellationToken)
         {
-            Result access = await EnsureAdminAsync(projectId, cancellationToken);
+            Result access = await _projectAccessService.EnsureAdminAsync(projectId, cancellationToken);
             if (!access.IsSuccess)
                 return Result<BoardResponse>.Forbidden(access.Error);
-
-            if (!await _context.Projects.AnyAsync(p => p.Id == projectId, cancellationToken))
-                return Result<BoardResponse>.NotFound("Project was not found.");
 
             bool orderTaken = await _context.Boards
                 .AnyAsync(b => b.ProjectId == projectId && b.OrderIndex == request.OrderIndex, cancellationToken);
@@ -95,7 +93,7 @@ namespace ProTasker.Services.Implementations
             if (board == null)
                 return Result<BoardResponse>.NotFound("Board was not found.");
 
-            Result access = await EnsureAdminAsync(board.ProjectId, cancellationToken);
+            Result access = await _projectAccessService.EnsureAdminAsync(board.ProjectId, cancellationToken);
             if (!access.IsSuccess)
                 return Result<BoardResponse>.Forbidden(access.Error);
 
@@ -128,7 +126,7 @@ namespace ProTasker.Services.Implementations
 
         public async Task<Result> ReorderAsync(Guid projectId, ReorderBoardsRequest request, CancellationToken cancellationToken)
         {
-            Result adminResult = await EnsureAdminAsync(projectId, cancellationToken);
+            Result adminResult = await _projectAccessService.EnsureAdminAsync(projectId, cancellationToken);
             if (!adminResult.IsSuccess)
                 return Result.Forbidden(adminResult.Error);
 
@@ -178,7 +176,7 @@ namespace ProTasker.Services.Implementations
             if (board == null)
                 return Result.NotFound("Board was not found.");
 
-            Result access = await EnsureAdminAsync(board.ProjectId, cancellationToken);
+            Result access = await _projectAccessService.EnsureAdminAsync(board.ProjectId, cancellationToken);
             if (!access.IsSuccess)
                 return Result.Forbidden(access.Error);
 
@@ -192,39 +190,6 @@ namespace ProTasker.Services.Implementations
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Board {BoardId} deleted from project {ProjectId}.", boardId, board.ProjectId);
-
-            return Result.Success();
-        }
-
-        private async Task<Result> EnsureMemberAsync(Guid projectId, CancellationToken cancellationToken)
-        {
-            Guid currentId = _userContextService.GetCurrentUserId();
-            bool isMember = await _context.ProjectMembers
-                .AnyAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
-
-            if (!isMember)
-            {
-                _logger.LogWarning("User {UserId} attempted to access project {ProjectId} without being a member.", currentId, projectId);
-                return Result.Forbidden("You are not a member of this project.");
-            }
-
-            return Result.Success();
-        }
-
-        private async Task<Result> EnsureAdminAsync(Guid projectId, CancellationToken cancellationToken)
-        {
-            Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers
-                .FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
-
-            if (member == null)
-                return Result.Forbidden("You are not a member of this project.");
-
-            if (member.Role != ProjectRole.Admin)
-            {
-                _logger.LogWarning("User {UserId} attempted to manage boards in project {ProjectId} without Admin role.", currentId, projectId);
-                return Result.Forbidden("Only administrators can manage boards.");
-            }
 
             return Result.Success();
         }

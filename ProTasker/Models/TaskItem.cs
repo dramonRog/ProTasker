@@ -1,6 +1,6 @@
 namespace ProTasker.Models
 {
-    public class TaskItem
+    public class TaskItem : ISoftDeletable
     {
         public Guid Id { get; set; }
         public Guid ProjectId { get; set; }
@@ -11,6 +11,8 @@ namespace ProTasker.Models
         public TaskPriority Priority { get; set; } = TaskPriority.Unassigned;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? DueDate { get; set; }
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
         public Project? Project { get; set; }
         public User? User { get; set; }
         public Board? Board { get; set; }

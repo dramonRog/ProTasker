@@ -66,6 +66,24 @@ namespace ProTasker.Data
                 entity.HasIndex(b => new { b.ProjectId, b.OrderIndex }).IsUnique();
 
             });
+
+            modelBuilder.Entity<TaskItem>().HasQueryFilter(ti => !ti.IsDeleted);
+            modelBuilder.Entity<Project>().HasQueryFilter(p => !p.IsDeleted);
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            foreach (var entry in ChangeTracker.Entries<ISoftDeletable>())
+            {
+                if (entry.State == EntityState.Deleted)
+                {
+                    entry.State = EntityState.Modified;
+                    entry.Entity.IsDeleted = true;
+                    entry.Entity.DeletedAt = DateTime.UtcNow;
+                }
+            }
+
+            return base.SaveChangesAsync(cancellationToken);
         }
     }
 }

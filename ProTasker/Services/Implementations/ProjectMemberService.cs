@@ -15,23 +15,22 @@ namespace ProTasker.Services.Implementations
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IUserContextService _userContextService;
+        private readonly IProjectAccessService _projectAccessService;
         private readonly ILogger<ProjectMemberService> _logger;
 
-        public ProjectMemberService(AppDbContext context, IMapper mapper, IUserContextService userContextService, ILogger<ProjectMemberService> logger)
+        public ProjectMemberService(AppDbContext context, IMapper mapper, IUserContextService userContextService, IProjectAccessService projectAccessService, ILogger<ProjectMemberService> logger)
         {
             _context = context;
             _mapper = mapper;
             _userContextService = userContextService;
+            _projectAccessService = projectAccessService;
             _logger = logger;
         }
         public async Task<Result<List<ProjectMemberResponse>>> GetAllAsync(Guid projectId, CancellationToken cancellationToken)
         {
-            Guid currentUserId = _userContextService.GetCurrentUserId();
-            if (!await _context.ProjectMembers.AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == currentUserId, cancellationToken))
-            {
-                _logger.LogWarning("User {UserId} attempted to list members of project {ProjectId} without being a member.", currentUserId, projectId);
-                return Result<List<ProjectMemberResponse>>.Forbidden("You are not a member of this project.");
-            }
+            Result access = await _projectAccessService.EnsureMemberAsync(projectId, cancellationToken);
+            if (!access.IsSuccess)
+                return Result<List<ProjectMemberResponse>>.Forbidden(access.Error);
 
             var result = await _context.ProjectMembers
                 .AsNoTracking()
@@ -44,12 +43,9 @@ namespace ProTasker.Services.Implementations
 
         public async Task<Result<ProjectMemberResponse>> GetByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
         {
-            Guid currentId = _userContextService.GetCurrentUserId();
-            if (!await _context.ProjectMembers.AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == currentId, cancellationToken))
-            {
-                _logger.LogWarning("User {UserId} attempted to get member details in project {ProjectId} without being a member.", currentId, projectId);
-                return Result<ProjectMemberResponse>.Forbidden("You are not a member of this project.");
-            }
+            Result access = await _projectAccessService.EnsureMemberAsync(projectId, cancellationToken);
+            if (!access.IsSuccess)
+                return Result<ProjectMemberResponse>.Forbidden(access.Error);
 
             var result = await _context.ProjectMembers
                 .AsNoTracking()
@@ -62,23 +58,14 @@ namespace ProTasker.Services.Implementations
         public async Task<Result<ProjectMemberResponse>> AddProjectMemberToProjectAsync(Guid projectId, AddProjectMemberRequest request, CancellationToken cancellationToken)
         {
             Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
 
-            if (member == null)
-                return Result<ProjectMemberResponse>.Forbidden("You are not a member of this project.");
+            Result<ProjectMember> adminResult = await _projectAccessService.EnsureAdminAsync(projectId, cancellationToken);
+            if (!adminResult.IsSuccess)
+                return Result<ProjectMemberResponse>.Forbidden(adminResult.Error);
 
             User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
             if (user == null)
                 return Result<ProjectMemberResponse>.NotFound("User was not found.");
-
-            if (!await _context.Projects.AnyAsync(p => p.Id == projectId, cancellationToken))
-                return Result<ProjectMemberResponse>.NotFound("Project was not found.");
-
-            if (member.Role != ProjectRole.Admin)
-            {
-                _logger.LogWarning("User {UserId} attempted to add user {TargetUserId} to project {ProjectId} without Admin role.", currentId, request.UserId, projectId);
-                return Result<ProjectMemberResponse>.Forbidden("Only administrators can add users to the project.");
-            }
 
             if (await _context.ProjectMembers.AnyAsync(pm => pm.UserId == request.UserId && pm.ProjectId == projectId, cancellationToken))
                 return Result<ProjectMemberResponse>.Conflict("User is already a member of this project.");
@@ -95,24 +82,16 @@ namespace ProTasker.Services.Implementations
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Admin {AdminId} successfully added user {UserId} to project {ProjectId} with role {Role}.", currentId, request.UserId, projectId, request.Role);
-
-            ProjectMemberResponse response = _mapper.Map<ProjectMemberResponse>(projectMember);
-            return Result<ProjectMemberResponse>.Success(response);
+            return Result<ProjectMemberResponse>.Success(_mapper.Map<ProjectMemberResponse>(projectMember));
         }
 
         public async Task<Result<ProjectMemberResponse>> ChangeProjectMemberRoleAsync(Guid userId, Guid projectId, ChangeProjectMemberRole request, CancellationToken cancellationToken)
         {
             Guid currentUserId = _userContextService.GetCurrentUserId();
 
-            ProjectMember? admin = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentUserId && pm.ProjectId == projectId, cancellationToken);
-            if (admin == null)
-                return Result<ProjectMemberResponse>.Forbidden("You are not a member of this project.");
-
-            if (admin.Role != ProjectRole.Admin)
-            {
-                _logger.LogWarning("User {UserId} attempted to change role of user {TargetUserId} in project {ProjectId} without Admin role.", currentUserId, userId, projectId);
-                return Result<ProjectMemberResponse>.Forbidden("Only administrators can change member role.");
-            }
+            Result<ProjectMember> adminResult = await _projectAccessService.EnsureAdminAsync(projectId, cancellationToken);
+            if (!adminResult.IsSuccess)
+                return Result<ProjectMemberResponse>.Forbidden(adminResult.Error);
 
             ProjectMember? projectMember = await _context.ProjectMembers
                 .Include(pm => pm.User)
@@ -138,12 +117,16 @@ namespace ProTasker.Services.Implementations
         public async Task<Result> DeleteByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
         {
             Guid currentId = _userContextService.GetCurrentUserId();
-            ProjectMember? member = await _context.ProjectMembers.FirstOrDefaultAsync(pm => pm.UserId == currentId && pm.ProjectId == projectId, cancellationToken);
 
-            if (member == null)
-                return Result.Forbidden("You are not a member of this project.");
+            ProjectMember? currentMember = await _context.Projects
+                .Where(p => p.Id == projectId)
+                .SelectMany(p => p.ProjectMembers.Where(pm => pm.UserId == currentId))
+                .FirstOrDefaultAsync(cancellationToken);
 
-            if (member.Role != ProjectRole.Admin && userId != currentId)
+            if (currentMember == null)
+                return Result.Forbidden("You are not a member of this project, or it has been deleted.");
+
+            if (currentMember.Role != ProjectRole.Admin && userId != currentId)
             {
                 _logger.LogWarning("User {UserId} attempted to remove user {TargetUserId} from project {ProjectId} without Admin role.", currentId, userId, projectId);
                 return Result.Forbidden("Only administrators can remove other members from the project.");
@@ -155,19 +138,29 @@ namespace ProTasker.Services.Implementations
                 return Result.NotFound("Project member was not found.");
 
             if (memberToRemove.Role == ProjectRole.Admin &&
-                !await _context.ProjectMembers.AnyAsync(pm => pm.UserId != userId && pm.ProjectId == projectId && pm.Role == ProjectRole.Admin))
+                !await _context.ProjectMembers.AnyAsync(pm => pm.UserId != userId && pm.ProjectId == projectId && pm.Role == ProjectRole.Admin, cancellationToken))
             {
                 _logger.LogWarning("Blocked attempt to remove the last administrator {UserId} from project {ProjectId}.", userId, projectId);
                 return Result.Conflict("Can't remove the last administrator of the project.");
             }
 
-            _context.ProjectMembers.Remove(memberToRemove);
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                _context.ProjectMembers.Remove(memberToRemove);
 
-            await _context.TaskItems
-                .Where(t => t.ProjectId == projectId && t.UserId == userId)
-                .ExecuteUpdateAsync(s => s.SetProperty(t => t.UserId, (Guid?)null));
+                await _context.TaskItems
+                    .Where(t => t.ProjectId == projectId && t.UserId == userId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.UserId, (Guid?)null), cancellationToken);
 
-            await _context.SaveChangesAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
 
             _logger.LogInformation("User {RequesterId} removed user {UserId} from project {ProjectId}. All their assigned tasks were unassigned.", currentId, userId, projectId);
             return Result.Success();
