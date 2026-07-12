@@ -7,6 +7,7 @@ using ProTasker.DTOs.Requests.Project;
 using ProTasker.DTOs.Responses.Project;
 using ProTasker.Models;
 using ProTasker.Models.Enums;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -28,17 +29,25 @@ namespace ProTasker.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<Result<List<ProjectListItemResponse>>> GetAllAsync(CancellationToken cancellationToken)
+        public async Task<Result<PagedResult<ProjectListItemResponse>>> GetAllAsync(PaginationQuery pagination, CancellationToken cancellationToken)
         {
             Guid currentUserId = _userContextService.GetCurrentUserId();
 
-            List<ProjectListItemResponse> projectsList = await _context.Projects
+            var query = _context.Projects
                 .AsNoTracking()
-                .Where(p => p.ProjectMembers.Any(pm => pm.UserId ==  currentUserId))
+                .Where(p => p.ProjectMembers.Any(pm => pm.UserId == currentUserId))
+                .OrderBy(p => p.CreatedAt);
+
+            int totalAmount = await query.CountAsync(cancellationToken);
+            int skipCount = (pagination.PageNumber - 1) * pagination.PageSize;
+
+            List<ProjectListItemResponse> projectItems = await query
+                .Skip(skipCount)
+                .Take(pagination.PageSize)
                 .ProjectTo<ProjectListItemResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
 
-            return Result<List<ProjectListItemResponse>>.Success(projectsList);
+            return Result<PagedResult<ProjectListItemResponse>>.Success(new PagedResult<ProjectListItemResponse>(projectItems, totalAmount, pagination.PageNumber, pagination.PageSize));
         }
 
         public async Task<Result<ProjectDetailsResponse>> GetByIdAsync(Guid projectId, CancellationToken cancellationToken)
