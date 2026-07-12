@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using ProTasker.Common;
 using ProTasker.Data;
 using ProTasker.DTOs.Requests.TaskComment;
 using ProTasker.DTOs.Responses.TaskComment;
 using ProTasker.Models;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -26,24 +28,33 @@ namespace ProTasker.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task<Result<List<TaskCommentResponse>>> GetTaskCommentsAsync(Guid taskId, CancellationToken cancellationToken)
+        public async Task<Result<PagedResult<TaskCommentResponse>>> GetTaskCommentsAsync(Guid taskId, PaginationQuery pagination, CancellationToken cancellationToken)
         {
             TaskItem? task = await _context.TaskItems.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
             if (task == null)
-                return Result<List<TaskCommentResponse>>.NotFound("Task is not found.");
+                return Result<PagedResult<TaskCommentResponse>>.NotFound("Task is not found.");
 
             Result hasAccess = await _projectAccessService.EnsureMemberAsync(task.ProjectId, cancellationToken);
             if (!hasAccess.IsSuccess)
-                return Result<List<TaskCommentResponse>>.Forbidden(hasAccess.Error);
+                return Result<PagedResult<TaskCommentResponse>>.Forbidden(hasAccess.Error);
 
-            List<TaskComment> comments = await _context.TaskComments
+            IQueryable<TaskComment> query = _context.TaskComments
                 .AsNoTracking()
                 .Include(tc => tc.User)
                 .Where(tc => tc.TaskId == taskId)
-                .OrderBy(tc => tc.CreatedAt)
+                .OrderByDescending(tc => tc.CreatedAt);
+
+            int totalCount = await query.CountAsync(cancellationToken);
+            int skipAmount = (pagination.PageNumber - 1) * pagination.PageSize;
+
+            List<TaskCommentResponse> commentItems = await query
+                .Skip(skipAmount)
+                .Take(pagination.PageSize)
+                .ProjectTo<TaskCommentResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
-            return Result<List<TaskCommentResponse>>.Success(_mapper.Map<List<TaskCommentResponse>>(comments));
+
+            return Result<PagedResult<TaskCommentResponse>>.Success(new PagedResult<TaskCommentResponse>(commentItems, totalCount, pagination.PageNumber, pagination.PageSize));
         }
 
         public async Task<Result<TaskCommentResponse>> GetTaskCommentByIdAsync(Guid id, CancellationToken cancellationToken)

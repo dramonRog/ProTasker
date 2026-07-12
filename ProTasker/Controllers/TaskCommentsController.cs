@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProTasker.Common;
 using ProTasker.DTOs.Requests.TaskComment;
 using ProTasker.DTOs.Responses.TaskComment;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Controllers
@@ -22,10 +23,10 @@ namespace ProTasker.Controllers
         [HttpGet("task/{taskId:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(typeof(List<TaskCommentResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<TaskCommentResponse>>> GetTaskComments(Guid taskId, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<TaskCommentResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<TaskCommentResponse>>> GetTaskComments(Guid taskId, [FromQuery] PaginationQuery pagination, CancellationToken cancellationToken)
         {
-            var result = await _taskCommentService.GetTaskCommentsAsync(taskId, cancellationToken);
+            var result = await _taskCommentService.GetTaskCommentsAsync(taskId, pagination, cancellationToken);
             return result.CastToResultCode();
         }
 

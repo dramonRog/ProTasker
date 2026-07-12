@@ -44,6 +44,7 @@ namespace ProTasker.Services.Implementations
 
             List<ProjectMemberResponse> projectMemberItems = await query
                 .Skip(skipAmount)
+                .Take(pagination.PageSize)
                 .ProjectTo<ProjectMemberResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
 

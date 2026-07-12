@@ -57,6 +57,7 @@ namespace ProTasker.Services.Implementations
             List<TaskResponse> taskItems = await query
                 .OrderBy(t => t.CreatedAt)
                 .Skip(skipAmount)
+                .Take(pagination.PageSize)
                 .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
 
