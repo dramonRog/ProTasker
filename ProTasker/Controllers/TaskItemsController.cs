@@ -22,9 +22,9 @@ namespace ProTasker.Controllers
         [HttpGet("project/{projectId:guid}")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(List<TaskResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<TaskResponse>>> GetAllProjectTasks(Guid projectId, CancellationToken cancellationToken)
+        public async Task<ActionResult<List<TaskResponse>>> GetAllProjectTasks(Guid projectId, [FromQuery] GetTasksQueryParameters query, CancellationToken cancellationToken)
         {
-            var result = await _taskService.GetAllProjectTasksAsync(projectId, cancellationToken);
+            var result = await _taskService.GetAllProjectTasksAsync(projectId, query, cancellationToken);
             return result.CastToResultCode();
         }
 
@@ -32,9 +32,9 @@ namespace ProTasker.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(List<TaskResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<TaskResponse>>> GetAllUserTasks(Guid userId, [FromQuery] Guid? projectId, CancellationToken cancellationToken)
+        public async Task<ActionResult<List<TaskResponse>>> GetAllUserTasks(Guid userId, [FromQuery] Guid? projectId, [FromQuery] GetTasksQueryParameters query, CancellationToken cancellationToken)
         {
-            var result = await _taskService.GetAllUserTasksAsync(projectId, userId, cancellationToken);
+            var result = await _taskService.GetAllUserTasksAsync(projectId, userId, query, cancellationToken);
             return result.CastToResultCode();
         }
 

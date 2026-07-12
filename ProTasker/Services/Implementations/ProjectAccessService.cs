@@ -2,6 +2,7 @@
 using ProTasker.Common;
 using ProTasker.Data;
 using ProTasker.Models;
+using ProTasker.Models.Enums;
 using ProTasker.Services.Interfaces;
 using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
 

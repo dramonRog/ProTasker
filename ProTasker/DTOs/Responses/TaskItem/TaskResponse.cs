@@ -1,5 +1,5 @@
 ﻿using ProTasker.DTOs.Responses.Board;
-using ProTasker.Models;
+using ProTasker.Models.Enums;
 
 namespace ProTasker.DTOs.Responses.TaskItem
 {

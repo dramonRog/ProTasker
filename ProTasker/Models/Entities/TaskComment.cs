@@ -1,4 +1,6 @@
-﻿namespace ProTasker.Models
+﻿using ProTasker.Models.Interfaces;
+
+namespace ProTasker.Models
 {
     public class TaskComment : ISoftDeletable
     {

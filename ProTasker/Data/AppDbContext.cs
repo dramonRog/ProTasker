@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ProTasker.Models;
+using ProTasker.Models.Interfaces;
 
 namespace ProTasker.Data
 {

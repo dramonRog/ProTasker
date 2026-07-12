@@ -6,6 +6,7 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.ProjectMember;
 using ProTasker.DTOs.Responses.ProjectMember;
 using ProTasker.Models;
+using ProTasker.Models.Enums;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations

@@ -1,3 +1,5 @@
+using ProTasker.Models.Enums;
+
 namespace ProTasker.Models
 {
     public class ProjectMember

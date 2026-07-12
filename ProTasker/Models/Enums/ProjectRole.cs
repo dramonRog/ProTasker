@@ -1,4 +1,4 @@
-﻿namespace ProTasker.Models
+﻿namespace ProTasker.Models.Enums
 {
     public enum ProjectRole
     {

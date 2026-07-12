@@ -1,3 +1,5 @@
+using ProTasker.Models.Interfaces;
+
 namespace ProTasker.Models
 {
     public class Project : ISoftDeletable

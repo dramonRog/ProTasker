@@ -6,6 +6,7 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
 using ProTasker.Models;
+using ProTasker.Models.Enums;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -27,23 +28,33 @@ namespace ProTasker.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<Result<List<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, CancellationToken cancellationToken)
+        public async Task<Result<List<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken)
         {
             Result result = await _projectAccessService.EnsureMemberAsync(projectId, cancellationToken);
 
             if (!result.IsSuccess)
                 return Result<List<TaskResponse>>.Forbidden(result.Error);
 
-            var taskResult = await _context.TaskItems
+            IQueryable<TaskItem> query = _context.TaskItems
                 .AsNoTracking()
-                .Where(t => t.ProjectId == projectId)
-                .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
-                .ToListAsync(cancellationToken);
+                .Where(t => t.ProjectId == projectId);
 
-            return Result<List<TaskResponse>>.Success(taskResult);
+            if (queryParameters.AssigneeId != null)
+                query = query.Where(t => t.UserId == queryParameters.AssigneeId);
+            if (queryParameters.Priority != null)
+                query = query.Where(t => t.Priority == queryParameters.Priority);
+            if (!string.IsNullOrWhiteSpace(queryParameters.SearchTerm))
+            {
+                string searchPattern = $"%{queryParameters.SearchTerm}%";
+                query = query.Where(t => EF.Functions.ILike(t.Title, searchPattern) ||
+                    (t.Description != null && EF.Functions.ILike(t.Description, searchPattern)));
+            }
+
+            List<TaskResponse> tasks = await query.ProjectTo<TaskResponse>(_mapper.ConfigurationProvider).ToListAsync(cancellationToken);
+            return Result<List<TaskResponse>>.Success(tasks);
         }
 
-        public async Task<Result<List<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, CancellationToken cancellationToken)
+        public async Task<Result<List<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken)
         {
             Guid currentId = _userContextService.GetCurrentUserId();
 
@@ -74,7 +85,16 @@ namespace ProTasker.Services.Implementations
             if (projectId != null)
                 query = query.Where(t => t.ProjectId == projectId.Value);
 
-            List<TaskResponse> tasks = await query.ProjectTo<TaskResponse>(_mapper.ConfigurationProvider).ToListAsync();
+            if (queryParameters.Priority != null)
+                query = query.Where(t => t.Priority == queryParameters.Priority);
+            if (!string.IsNullOrWhiteSpace(queryParameters.SearchTerm))
+            {
+                string searchPattern = $"%{queryParameters.SearchTerm}%";
+                query = query.Where(t => EF.Functions.ILike(t.Title, searchPattern) ||
+                    (t.Description != null && EF.Functions.ILike(t.Description, searchPattern)));
+            }
+
+            List<TaskResponse> tasks = await query.ProjectTo<TaskResponse>(_mapper.ConfigurationProvider).ToListAsync(cancellationToken);
             return Result<List<TaskResponse>>.Success(tasks);
         }
 

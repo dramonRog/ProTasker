@@ -1,3 +1,6 @@
+using ProTasker.Models.Enums;
+using ProTasker.Models.Interfaces;
+
 namespace ProTasker.Models
 {
     public class TaskItem : ISoftDeletable

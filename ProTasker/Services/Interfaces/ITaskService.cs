@@ -6,8 +6,8 @@ namespace ProTasker.Services.Interfaces
 {
     public interface ITaskService
     {
-        Task<Result<List<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, CancellationToken cancellationToken);
-        Task<Result<List<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, CancellationToken cancellationToken);
+        Task<Result<List<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken);
+        Task<Result<List<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> GetByIdAsync(Guid taskId, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> UpdateAsync(Guid taskId, UpdateTaskItemRequest request, CancellationToken cancellationToken);
