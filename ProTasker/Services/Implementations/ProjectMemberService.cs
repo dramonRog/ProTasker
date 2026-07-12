@@ -7,6 +7,7 @@ using ProTasker.DTOs.Requests.ProjectMember;
 using ProTasker.DTOs.Responses.ProjectMember;
 using ProTasker.Models;
 using ProTasker.Models.Enums;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -27,19 +28,26 @@ namespace ProTasker.Services.Implementations
             _projectAccessService = projectAccessService;
             _logger = logger;
         }
-        public async Task<Result<List<ProjectMemberResponse>>> GetAllAsync(Guid projectId, CancellationToken cancellationToken)
+        public async Task<Result<PagedResult<ProjectMemberResponse>>> GetAllAsync(Guid projectId, PaginationQuery pagination, CancellationToken cancellationToken)
         {
             Result access = await _projectAccessService.EnsureMemberAsync(projectId, cancellationToken);
             if (!access.IsSuccess)
-                return Result<List<ProjectMemberResponse>>.Forbidden(access.Error);
+                return Result<PagedResult<ProjectMemberResponse>>.Forbidden(access.Error);
 
-            var result = await _context.ProjectMembers
+            IQueryable<ProjectMember> query = _context.ProjectMembers
                 .AsNoTracking()
                 .Where(pm => pm.ProjectId == projectId)
+                .OrderBy(pm => pm.AddedAt);
+
+            int totalCount = await query.CountAsync(cancellationToken);
+            int skipAmount = (pagination.PageNumber - 1) * pagination.PageSize;
+
+            List<ProjectMemberResponse> projectMemberItems = await query
+                .Skip(skipAmount)
                 .ProjectTo<ProjectMemberResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
 
-            return Result<List<ProjectMemberResponse>>.Success(result);
+            return Result<PagedResult<ProjectMemberResponse>>.Success(new PagedResult<ProjectMemberResponse>(projectMemberItems, totalCount, pagination.PageNumber, pagination.PageSize));
         }
 
         public async Task<Result<ProjectMemberResponse>> GetByIdAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)
@@ -157,9 +165,10 @@ namespace ProTasker.Services.Implementations
                 await _context.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Failed to remove user {UserId} from project {ProjectId} and unassign their tasks.", userId, projectId);
                 throw;
             }
 

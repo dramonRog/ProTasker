@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProTasker.Common;
 using ProTasker.DTOs.Requests.ProjectMember;
 using ProTasker.DTOs.Responses.ProjectMember;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Controllers
@@ -21,10 +22,10 @@ namespace ProTasker.Controllers
 
         [HttpGet("{projectId:guid}")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(typeof(List<ProjectMemberResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ProjectMemberResponse>>> GetAllMembers(Guid projectId, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<ProjectMemberResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<ProjectMemberResponse>>> GetAllMembers(Guid projectId, [FromQuery] PaginationQuery pagination, CancellationToken cancellationToken)
         {
-            var result = await _projectMemberService.GetAllAsync(projectId, cancellationToken);
+            var result = await _projectMemberService.GetAllAsync(projectId, pagination, cancellationToken);
             return result.CastToResultCode();
         }
 
