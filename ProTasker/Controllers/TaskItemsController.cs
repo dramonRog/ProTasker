@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProTasker.Common;
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Controllers
@@ -21,20 +22,20 @@ namespace ProTasker.Controllers
 
         [HttpGet("project/{projectId:guid}")]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(typeof(List<TaskResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<TaskResponse>>> GetAllProjectTasks(Guid projectId, [FromQuery] GetTasksQueryParameters query, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<TaskResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<TaskResponse>>> GetAllProjectTasks(Guid projectId, [FromQuery] PaginationQuery pagination, [FromQuery] GetTasksQueryParameters query, CancellationToken cancellationToken)
         {
-            var result = await _taskService.GetAllProjectTasksAsync(projectId, query, cancellationToken);
+            var result = await _taskService.GetAllProjectTasksAsync(projectId, pagination, query, cancellationToken);
             return result.CastToResultCode();
         }
 
         [HttpGet("user/{userId:guid}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(typeof(List<TaskResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<TaskResponse>>> GetAllUserTasks(Guid userId, [FromQuery] Guid? projectId, [FromQuery] GetTasksQueryParameters query, CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<TaskResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<TaskResponse>>> GetAllUserTasks(Guid userId, [FromQuery] Guid? projectId, [FromQuery] PaginationQuery pagination, [FromQuery] GetTasksQueryParameters query, CancellationToken cancellationToken)
         {
-            var result = await _taskService.GetAllUserTasksAsync(projectId, userId, query, cancellationToken);
+            var result = await _taskService.GetAllUserTasksAsync(projectId, userId, pagination, query, cancellationToken);
             return result.CastToResultCode();
         }
 

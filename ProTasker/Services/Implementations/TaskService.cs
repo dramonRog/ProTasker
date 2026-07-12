@@ -7,6 +7,7 @@ using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
 using ProTasker.Models;
 using ProTasker.Models.Enums;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -28,12 +29,12 @@ namespace ProTasker.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<Result<List<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken)
+        public async Task<Result<PagedResult<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, PaginationQuery pagination, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken)
         {
             Result result = await _projectAccessService.EnsureMemberAsync(projectId, cancellationToken);
 
             if (!result.IsSuccess)
-                return Result<List<TaskResponse>>.Forbidden(result.Error);
+                return Result<PagedResult<TaskResponse>>.Forbidden(result.Error);
 
             IQueryable<TaskItem> query = _context.TaskItems
                 .AsNoTracking()
@@ -50,28 +51,36 @@ namespace ProTasker.Services.Implementations
                     (t.Description != null && EF.Functions.ILike(t.Description, searchPattern)));
             }
 
-            List<TaskResponse> tasks = await query.ProjectTo<TaskResponse>(_mapper.ConfigurationProvider).ToListAsync(cancellationToken);
-            return Result<List<TaskResponse>>.Success(tasks);
+            int totalCount = await query.CountAsync(cancellationToken);
+            int skipAmount = (pagination.PageNumber - 1) * pagination.PageSize;
+
+            List<TaskResponse> taskItems = await query
+                .OrderBy(t => t.CreatedAt)
+                .Skip(skipAmount)
+                .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
+                .ToListAsync(cancellationToken);
+
+            return Result<PagedResult<TaskResponse>>.Success(new PagedResult<TaskResponse>(taskItems, totalCount, pagination.PageNumber, pagination.PageSize));
         }
 
-        public async Task<Result<List<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken)
+        public async Task<Result<PagedResult<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, PaginationQuery pagination, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken)
         {
             Guid currentId = _userContextService.GetCurrentUserId();
 
             if (currentId != userId && projectId == null)
             {
                 _logger.LogWarning("User {UserId} attempted to view all tasks of user {TargetUserId} without specifying a shared project context.", currentId, userId);
-                return Result<List<TaskResponse>>.Forbidden("You can't get tasks of this user");
+                return Result<PagedResult<TaskResponse>>.Forbidden("You can't get tasks of this user");
             }
 
             if (projectId != null)
             {
                 Result result = await _projectAccessService.EnsureMemberAsync(projectId.Value, cancellationToken);
                 if (!result.IsSuccess)
-                    return Result<List<TaskResponse>>.Forbidden(result.Error);
+                    return Result<PagedResult<TaskResponse>>.Forbidden(result.Error);
 
                 if (!await _context.ProjectMembers.AnyAsync(pm => pm.UserId == userId && pm.ProjectId == projectId, cancellationToken))
-                    return Result<List<TaskResponse>>.NotFound("User was not found as a member of this project.");
+                    return Result<PagedResult<TaskResponse>>.NotFound("User was not found as a member of this project.");
             }
 
             IQueryable<Guid> visibleProjectIds = _context.Projects
@@ -94,8 +103,16 @@ namespace ProTasker.Services.Implementations
                     (t.Description != null && EF.Functions.ILike(t.Description, searchPattern)));
             }
 
-            List<TaskResponse> tasks = await query.ProjectTo<TaskResponse>(_mapper.ConfigurationProvider).ToListAsync(cancellationToken);
-            return Result<List<TaskResponse>>.Success(tasks);
+            int totalCount = await query.CountAsync(cancellationToken);
+            int skipAmount = (pagination.PageNumber - 1) * pagination.PageSize;
+
+            List<TaskResponse> taskItems = await query
+                .OrderBy(t => t.CreatedAt)
+                .Skip(skipAmount)
+                .ProjectTo<TaskResponse>(_mapper.ConfigurationProvider)
+                .ToListAsync(cancellationToken);
+
+            return Result<PagedResult<TaskResponse>>.Success(new PagedResult<TaskResponse>(taskItems, totalCount, pagination.PageNumber, pagination.PageSize));
         }
 
         public async Task<Result<TaskResponse>> GetByIdAsync(Guid taskId, CancellationToken cancellationToken)

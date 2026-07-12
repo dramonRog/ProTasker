@@ -1,13 +1,14 @@
 ﻿using ProTasker.Common;
 using ProTasker.DTOs.Requests.TaskItem;
 using ProTasker.DTOs.Responses.TaskItem;
+using ProTasker.Pagination;
 
 namespace ProTasker.Services.Interfaces
 {
     public interface ITaskService
     {
-        Task<Result<List<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken);
-        Task<Result<List<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken);
+        Task<Result<PagedResult<TaskResponse>>> GetAllProjectTasksAsync(Guid projectId, PaginationQuery pagination, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken);
+        Task<Result<PagedResult<TaskResponse>>> GetAllUserTasksAsync(Guid? projectId, Guid userId, PaginationQuery pagination, GetTasksQueryParameters queryParameters, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> GetByIdAsync(Guid taskId, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> CreateAsync(CreateTaskItemRequest request, CancellationToken cancellationToken);
         Task<Result<TaskResponse>> UpdateAsync(Guid taskId, UpdateTaskItemRequest request, CancellationToken cancellationToken);
