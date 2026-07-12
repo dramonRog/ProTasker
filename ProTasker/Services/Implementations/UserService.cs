@@ -7,6 +7,7 @@ using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
 using ProTasker.Models;
 using ProTasker.Models.Enums;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -26,21 +27,29 @@ namespace ProTasker.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<Result<List<UserResponse>>> GetAllAsync(CancellationToken cancellationToken)
+        public async Task<Result<PagedResult<UserResponse>>> GetAllAsync(PaginationQuery pagination, CancellationToken cancellationToken)
         {
             Guid currentUserId = _userContextService.GetCurrentUserId();
 
             var myProjectIds = _context.Projects
                 .Where(p => p.ProjectMembers.Any(pm => pm.UserId == currentUserId))
                 .Select(p => p.Id);
-            
-            var usersList = await _context.Users
+
+            var query = _context.Users
                 .AsNoTracking()
-                .Where(u => u.Id == currentUserId || u.ProjectMembers.Any(pm => myProjectIds.Contains(pm.ProjectId)))
+                .Where(u => u.Id == currentUserId || u.ProjectMembers.Any(pm => myProjectIds.Contains(pm.ProjectId)));
+
+            int totalCount = await query.CountAsync(cancellationToken);
+            int skipAmount = (pagination.PageNumber - 1) * pagination.PageSize;
+
+            List<UserResponse> users = await query
+                .OrderBy(u => u.CreatedAt)
+                .Skip(skipAmount)
+                .Take(pagination.PageSize)
                 .ProjectTo<UserResponse>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
 
-            return Result<List<UserResponse>>.Success(usersList);
+            return Result<PagedResult<UserResponse>>.Success(new PagedResult<UserResponse>(users, totalCount, pagination.PageNumber, pagination.PageSize));
         }
 
         public async Task<Result<UserResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)

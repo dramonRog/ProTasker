@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProTasker.Common;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
+using ProTasker.Pagination;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Controllers
@@ -20,10 +21,10 @@ namespace ProTasker.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<UserResponse>>> GetAllUsers(CancellationToken cancellationToken)
+        [ProducesResponseType(typeof(PagedResult<UserResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<UserResponse>>> GetAllUsers([FromQuery] PaginationQuery pagination, CancellationToken cancellationToken)
         {
-            var result = await _userService.GetAllAsync(cancellationToken);
+            var result = await _userService.GetAllAsync(pagination, cancellationToken);
             return result.CastToResultCode();
         }
 
