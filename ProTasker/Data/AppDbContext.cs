@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ProTasker.Models;
+using ProTasker.Models.Entities;
 using ProTasker.Models.Interfaces;
 
 namespace ProTasker.Data
@@ -14,7 +15,8 @@ namespace ProTasker.Data
         public DbSet<ProjectMember> ProjectMembers { get; set; }
         public DbSet<Board> Boards { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
-
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -54,10 +56,6 @@ namespace ProTasker.Data
                     .HasConversion<string>();
             });
 
-            modelBuilder.Entity<User>()
-                .HasIndex(u => u.Email)
-                .IsUnique();
-
             modelBuilder.Entity<Board>(entity =>
             {
                 entity.HasOne(b => b.Project)
@@ -66,7 +64,6 @@ namespace ProTasker.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(b => new { b.ProjectId, b.OrderIndex }).IsUnique();
-
             });
 
             modelBuilder.Entity<TaskComment>(entity =>
@@ -81,6 +78,18 @@ namespace ProTasker.Data
                     .HasForeignKey(tc => tc.UserId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
+
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasOne(rt => rt.User)
+                    .WithMany(u => u.RefreshTokens)
+                    .HasForeignKey(rt => rt.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
 
             modelBuilder.Entity<TaskItem>().HasQueryFilter(ti => !ti.IsDeleted);
             modelBuilder.Entity<Project>().HasQueryFilter(p => !p.IsDeleted);

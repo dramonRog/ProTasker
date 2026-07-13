@@ -3,6 +3,7 @@ using ProTasker.Models;
 using ProTasker.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace ProTasker.Services.Implementations
@@ -44,6 +45,15 @@ namespace ProTasker.Services.Implementations
             string jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
             return (Token: jwt, ExpiresAt: expiresAt);
+        }
+
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[35];
+
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
         }
     }
 }

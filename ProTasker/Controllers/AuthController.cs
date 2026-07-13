@@ -42,5 +42,23 @@ namespace ProTasker.Controllers
             var result = await _authService.LoginAsync(request, cancellationToken);
             return result.CastToResultCode();
         }
+
+        [HttpPost("refresh")]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        public async Task<ActionResult<AuthResponse>> RefreshToken(RefreshTokenRequest request, CancellationToken cancellationToken)
+        {
+            var result = await _authService.RefreshTokenAsync(request, cancellationToken);
+            return result.CastToResultCode();
+        }
+
+        [HttpPost("revoke")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> RevokeToken(RevokeTokenRequest request, CancellationToken cancellationToken)
+        {
+            var result = await _authService.RevokeTokenAsync(request, cancellationToken);
+            return result.CastToResultCode();
+        }
     }
 }

@@ -5,6 +5,7 @@ using ProTasker.Data;
 using ProTasker.DTOs.Requests.User;
 using ProTasker.DTOs.Responses.User;
 using ProTasker.Models;
+using ProTasker.Models.Entities;
 using ProTasker.Services.Interfaces;
 
 namespace ProTasker.Services.Implementations
@@ -57,7 +58,19 @@ namespace ProTasker.Services.Implementations
 
 
             (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(user);
-            AuthResponse response = new AuthResponse(tokenData.Token, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
+            string refreshTokenString = _tokenService.GenerateRefreshToken();
+
+            RefreshToken refreshToken = new RefreshToken
+            {
+                Token = refreshTokenString,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                UserId = user.Id
+            };
+
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            AuthResponse response = new AuthResponse(tokenData.Token, refreshTokenString, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
 
             _logger.LogInformation("User registered successfully with ID: {UserId}", user.Id);
             return Result<AuthResponse>.Success(response);
@@ -78,10 +91,71 @@ namespace ProTasker.Services.Implementations
             }
 
             (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(user);
-            AuthResponse response = new AuthResponse(tokenData.Token, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
+
+            string refreshTokenString = _tokenService.GenerateRefreshToken();
+
+            RefreshToken refreshToken = new RefreshToken
+            {
+                Token = refreshTokenString,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                UserId = user.Id
+            };
+
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            AuthResponse response = new AuthResponse(tokenData.Token, refreshTokenString, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
 
             _logger.LogInformation("User {UserId} logged in successfully.", user.Id);
             return Result<AuthResponse>.Success(response);
+        }
+
+        public async Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken)
+        {
+            RefreshToken? refreshToken = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, cancellationToken);
+
+            if (refreshToken == null || !refreshToken.IsActive)
+            {
+                _logger.LogWarning("Attempted to use invalid or expired refresh token.");
+                return Result<AuthResponse>.Unauthorized("Invalid or expired refresh token.");
+            }
+
+            refreshToken.RevokedAt = DateTime.UtcNow;
+
+            (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(refreshToken.User);
+            string newRefreshTokenString = _tokenService.GenerateRefreshToken();
+
+            RefreshToken newRefreshToken = new RefreshToken
+            {
+                Token = newRefreshTokenString,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                UserId = refreshToken.UserId
+            };
+
+            _context.RefreshTokens.Add(newRefreshToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("User {UserId} successfully refreshed tokens.", refreshToken.UserId);
+
+            AuthResponse authResponse = new AuthResponse(tokenData.Token, newRefreshTokenString, tokenData.ExpiresAt, _mapper.Map<UserResponse>(refreshToken.User));
+            return Result<AuthResponse>.Success(authResponse);
+        }
+
+        public async Task<Result> RevokeTokenAsync(RevokeTokenRequest request, CancellationToken cancellationToken)
+        {
+            RefreshToken? refreshToken = await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, cancellationToken);
+
+            if (refreshToken == null || !refreshToken.IsActive)
+                return Result.Success();
+
+            refreshToken.RevokedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Refresh token was successfully revoked (User ID: {UserId}).", refreshToken.UserId);
+            return Result.Success();
         }
     }
 }

@@ -8,5 +8,7 @@ namespace ProTasker.Services.Interfaces
     {
         Task<Result<AuthResponse>> RegisterAsync(RegisterUserRequest request, CancellationToken cancellationToken);
         Task<Result<AuthResponse>> LoginAsync(LoginUserRequest request, CancellationToken cancellationToken);
+        Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken);
+        Task<Result> RevokeTokenAsync(RevokeTokenRequest request, CancellationToken cancellationToken);
     }
 }

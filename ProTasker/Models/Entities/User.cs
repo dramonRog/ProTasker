@@ -1,4 +1,6 @@
-﻿namespace ProTasker.Models
+﻿using ProTasker.Models.Entities;
+
+namespace ProTasker.Models
 {
     public class User
     {
@@ -10,5 +12,6 @@
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
         public ICollection<TaskItem> AssignedTasks { get; set; } = new List<TaskItem>();
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     }
 }
