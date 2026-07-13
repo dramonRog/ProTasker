@@ -43,6 +43,15 @@ namespace ProTasker.Controllers
             return result.CastToResultCode();
         }
 
+        [HttpPost("google")]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        public async Task<ActionResult<AuthResponse>> LoginWithGoogle(GoogleLoginRequest request, CancellationToken cancellationToken)
+        {
+            var result = await _authService.LoginWithGoogleAsync(request, cancellationToken);
+            return result.CastToResultCode();
+        }
+
         [HttpPost("refresh")]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]

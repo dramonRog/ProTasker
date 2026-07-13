@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 using ProTasker.Common;
 using ProTasker.Data;
@@ -16,13 +17,15 @@ namespace ProTasker.Services.Implementations
         private readonly IMapper _mapper;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AuthService> _logger;
+        private readonly IConfiguration _configuration;
 
-        public AuthService(AppDbContext context, IMapper mapper, ITokenService tokenService, ILogger<AuthService> logger)
+        public AuthService(AppDbContext context, IMapper mapper, ITokenService tokenService, ILogger<AuthService> logger, IConfiguration configuration)
         {
             _context = context;
             _mapper = mapper;
             _tokenService = tokenService;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task<Result<AuthResponse>> RegisterAsync(RegisterUserRequest request, CancellationToken cancellationToken)
@@ -107,6 +110,62 @@ namespace ProTasker.Services.Implementations
             AuthResponse response = new AuthResponse(tokenData.Token, refreshTokenString, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
 
             _logger.LogInformation("User {UserId} logged in successfully.", user.Id);
+            return Result<AuthResponse>.Success(response);
+        }
+
+        public async Task<Result<AuthResponse>> LoginWithGoogleAsync(GoogleLoginRequest request, CancellationToken cancellationToken)
+        {
+            GoogleJsonWebSignature.Payload payload;
+
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { _configuration["Authentication:Google:ClientId"] }
+                };
+
+                payload = await GoogleJsonWebSignature.ValidateAsync(request.Credential, settings);
+            }
+            catch (InvalidJwtException)
+            {
+                _logger.LogWarning("Failed Google login: Invalid JWT token.");
+                return Result<AuthResponse>.Unauthorized("Invalid Google token.");
+            }
+
+            string normalizedEmail = payload.Email.ToLowerInvariant();
+
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+
+            if (user == null)
+            {
+                user = new User
+                {
+                    FirstName = payload.GivenName ?? "Google",
+                    LastName = payload.FamilyName ?? "User",
+                    Email = normalizedEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString())
+                };
+
+                _context.Users.Add(user);
+                _logger.LogInformation("Created new user {UserId} via Google OAuth.", user.Id);
+            }
+
+            (string Token, DateTime ExpiresAt) tokenData = _tokenService.CreateToken(user);
+            string refreshTokenString = _tokenService.GenerateRefreshToken();
+
+            RefreshToken refreshToken = new RefreshToken
+            {
+                Token = refreshTokenString,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                UserId = user.Id
+            };
+
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("User {UserId} logged in successfully via Google.", user.Id);
+
+            AuthResponse response = new AuthResponse(tokenData.Token, refreshTokenString, tokenData.ExpiresAt, _mapper.Map<UserResponse>(user));
             return Result<AuthResponse>.Success(response);
         }
 
