@@ -5,9 +5,10 @@ namespace ProTasker.Validators.Board
 {
     public class ReorderBoardsRequestValidator : AbstractValidator<ReorderBoardsRequest>
     {
-        public ReorderBoardsRequestValidator() 
+        public ReorderBoardsRequestValidator()
         {
             RuleFor(x => x.BoardIds)
+                .Cascade(CascadeMode.Stop) 
                 .NotEmpty().WithMessage("The board IDs list cannot be empty.")
                 .Must(ids => ids.Distinct().Count() == ids.Count).WithMessage("The board IDs list contains duplicates.");
         }

@@ -26,9 +26,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Validators\Board\" />
-    <Folder Include="Validators\Project\" />
-  </ItemGroup>
-
 </Project>
