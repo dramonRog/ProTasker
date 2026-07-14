@@ -8,7 +8,8 @@ namespace ProTasker.Validators.TaskItem
         public AssignTaskRequestValidator()
         {
             RuleFor(x => x.UserId)
-                .NotEmpty().WithMessage("Assigned user is required.");
+                .NotNull().WithMessage("Assigned user is required.")
+                .NotEqual(Guid.Empty).WithMessage("Assigned user is required.");
         }
     }
 }

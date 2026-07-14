@@ -24,7 +24,7 @@ namespace ProTasker.Validators.TaskItem
                 .When(x => x.DueDate.HasValue);
 
             RuleFor(x => x.BoardId)
-                .NotEmpty().WithMessage("Board id cannot be empty.")
+                .NotEqual(Guid.Empty).WithMessage("Board id cannot be empty.")
                 .When(x => x.BoardId.HasValue);
 
             RuleFor(x => x.Priority)
