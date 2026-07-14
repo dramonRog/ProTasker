@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="ProTasker.UnitTests/ProTasker.UnitTests.csproj" Id="ded3ab23-493f-4287-8c74-ac5eb99e5a16" />
   <Project Path="ProTasker/ProTasker.csproj" />
 </Solution>
