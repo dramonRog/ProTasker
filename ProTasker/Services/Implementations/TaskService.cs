@@ -321,7 +321,6 @@ namespace ProTasker.Services.Implementations
                 ? _context.TaskItems.Include(t => t.Board)
                 : _context.TaskItems.AsNoTracking().Include(t => t.Board);
 
-            // Task will taken if IsDeleted is false, filter is created
             TaskItem? task = await query.FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
             if (task == null)
