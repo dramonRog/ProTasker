@@ -9,7 +9,9 @@ namespace ProTasker.Mapping
         public TaskCommentMappingProfile()
         {
             CreateMap<TaskComment, TaskCommentResponse>()
-                .ForMember(dest => dest.AuthorName, opt => opt.MapFrom(tc => tc.User != null ? $"{tc.User.FirstName} {tc.User.LastName}" : "Deleted User"));
+                .ForCtorParam(
+                    nameof(TaskCommentResponse.AuthorName),
+                    opt => opt.MapFrom(tc => tc.User != null ? $"{tc.User.FirstName} {tc.User.LastName}" : "Deleted User"));
         }
     }
 }
